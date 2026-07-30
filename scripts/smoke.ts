@@ -1,4 +1,4 @@
-import { createTossInvestClient, getAccounts, getHoldings, getPrices } from '../dist/index.js';
+import { createTossInvestClient } from '../dist/index.js';
 
 function requiredEnv(name: 'TOSS_CLIENT_ID' | 'TOSS_CLIENT_SECRET'): string {
   const value = process.env[name];
@@ -14,15 +14,14 @@ async function main(): Promise<void> {
     clientSecret: requiredEnv('TOSS_CLIENT_SECRET'),
   });
 
-  const { data: prices } = await getPrices({
-    client,
+  const { data: prices } = await client.getPrices({
     query: { symbols: '005930' },
     throwOnError: true,
   });
   console.log('현재가');
   console.dir(prices.result, { depth: null });
 
-  const { data: accounts } = await getAccounts({ client, throwOnError: true });
+  const { data: accounts } = await client.getAccounts({ throwOnError: true });
   console.log('계좌');
   console.dir(accounts.result, { depth: null });
 
@@ -32,8 +31,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const { data: holdings } = await getHoldings({
-    client,
+  const { data: holdings } = await client.getHoldings({
     headers: { 'X-Tossinvest-Account': account.accountSeq },
     throwOnError: true,
   });

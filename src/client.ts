@@ -1,6 +1,5 @@
-import type { Client } from './generated/client/index.js';
 import { createClient } from './generated/client/index.js';
-import { issueOAuth2Token } from './generated/sdk.gen.js';
+import { TossInvestApi } from './generated/sdk.gen.js';
 
 const BASE_URL = 'https://openapi.tossinvest.com';
 const EXPIRY_BUFFER_MS = 30_000;
@@ -10,7 +9,7 @@ export interface TossInvestClientOptions {
   clientSecret: string;
 }
 
-export type TossInvestClient = Client;
+export type TossInvestClient = TossInvestApi;
 
 export function createTossInvestClient({
   clientId,
@@ -21,17 +20,17 @@ export function createTossInvestClient({
   }
 
   const client = createClient({ baseUrl: BASE_URL });
+  const sdk = new TossInvestApi({ client });
   let cachedToken: { accessToken: string; expiresAt: number } | undefined;
   let issuingToken: Promise<string> | undefined;
 
   const issueToken = async (): Promise<string> => {
-    const { data: token } = await issueOAuth2Token({
+    const { data: token } = await sdk.issueOAuth2Token({
       body: {
         client_id: clientId,
         client_secret: clientSecret,
         grant_type: 'client_credentials',
       },
-      client,
       throwOnError: true,
     });
 
@@ -65,5 +64,5 @@ export function createTossInvestClient({
     return error;
   });
 
-  return client;
+  return sdk;
 }

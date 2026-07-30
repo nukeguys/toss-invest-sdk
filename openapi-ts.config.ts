@@ -12,5 +12,14 @@ export default defineConfig({
       fileName: 'spec',
     },
   },
-  plugins: ['@hey-api/client-fetch', '@hey-api/sdk'],
+  plugins: [
+    '@hey-api/client-fetch',
+    {
+      name: '@hey-api/sdk',
+      operations: {
+        containerName: 'TossInvestApi',
+        strategy: 'single',
+      },
+    },
+  ],
 });

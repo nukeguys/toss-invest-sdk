@@ -13,7 +13,7 @@ tokens are issued lazily, cached until 30 seconds before expiry, and shared by c
 Keep credentials in your application's environment and pass them to the SDK.
 
 ```ts
-import { createTossInvestClient, getPrices } from 'toss-sdk';
+import { createTossInvestClient } from 'toss-sdk';
 
 const clientId = process.env.TOSS_CLIENT_ID;
 const clientSecret = process.env.TOSS_CLIENT_SECRET;
@@ -23,8 +23,7 @@ if (!clientId || !clientSecret) {
 }
 
 const client = createTossInvestClient({ clientId, clientSecret });
-const prices = await getPrices({
-  client,
+const prices = await client.getPrices({
   query: { symbols: '005930,000660' },
 });
 ```
@@ -38,9 +37,7 @@ issues a new one. This avoids automatically repeating order requests.
 holdings and order calls. The SDK does not choose an account automatically.
 
 ```ts
-import { getAccounts, getHoldings } from 'toss-sdk';
-
-const { data } = await getAccounts({ client, throwOnError: true });
+const { data } = await client.getAccounts({ throwOnError: true });
 const account = data.result?.[0];
 
 if (!account) {
@@ -51,8 +48,7 @@ const accountHeaders = {
   'X-Tossinvest-Account': account.accountSeq,
 };
 
-const holdings = await getHoldings({
-  client,
+const holdings = await client.getHoldings({
   headers: accountHeaders,
 });
 ```
