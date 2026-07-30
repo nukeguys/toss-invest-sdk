@@ -1,0 +1,38 @@
+{
+  "name": "toss-sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for the Toss Securities Open API",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "generate": "openapi-ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "lint": "biome lint .",
+    "check": "biome check . && pnpm typecheck",
+    "test": "pnpm build && node --test",
+    "test:live": "pnpm build && node --env-file=.env scripts/smoke.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.6",
+    "@hey-api/openapi-ts": "0.99.0",
+    "@types/node": "26.1.2",
+    "typescript": "6.0.3"
+  }
+}
