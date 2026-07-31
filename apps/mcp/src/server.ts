@@ -30,7 +30,7 @@ import {
   zGetUsMarketCalendarQuery,
   zModifyConditionalOrderBody,
   zModifyOrderBody,
-} from 'toss-sdk';
+} from '@wi9ine/toss-invest-sdk';
 import { z } from 'zod';
 
 const [quantityOrderBody, amountOrderBody] = zCreateOrderBody.options;

@@ -4,6 +4,12 @@ Local MCP server backed by the Toss Securities Open API SDK in this repository. 
 standard `stdio` transport, so any MCP-compatible host that can start a local process can use it.
 The server is read-only unless trading is explicitly enabled.
 
+After publication, run it without cloning this repository:
+
+```sh
+TOSS_CLIENT_ID=... TOSS_CLIENT_SECRET=... pnpm dlx @wi9ine/toss-invest-mcp
+```
+
 ## Tools
 
 - `toss_get_prices`: current prices for up to 200 symbols

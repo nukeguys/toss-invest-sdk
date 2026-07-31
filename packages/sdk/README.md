@@ -12,8 +12,12 @@ tokens are issued lazily, cached until 30 seconds before expiry, and shared by c
 
 Keep credentials in your application's environment and pass them to the SDK.
 
+```sh
+pnpm add @wi9ine/toss-invest-sdk
+```
+
 ```ts
-import { createTossInvestClient } from 'toss-sdk';
+import { createTossInvestClient } from '@wi9ine/toss-invest-sdk';
 
 const clientId = process.env.TOSS_CLIENT_ID;
 const clientSecret = process.env.TOSS_CLIENT_SECRET;
@@ -62,7 +66,7 @@ The SDK exports Zod request schemas generated from the same OpenAPI specificatio
 used to validate API inputs without duplicating enums, formats, or range constraints.
 
 ```ts
-import { zCreateOrderBody, zGetPricesQuery } from 'toss-sdk';
+import { zCreateOrderBody, zGetPricesQuery } from '@wi9ine/toss-invest-sdk';
 
 zCreateOrderBody.parse(order);
 zGetPricesQuery.parse({ symbols: '005930,AAPL' });

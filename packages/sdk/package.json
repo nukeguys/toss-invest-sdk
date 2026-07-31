@@ -1,7 +1,22 @@
 {
-  "name": "toss-sdk",
+  "name": "@wi9ine/toss-invest-sdk",
   "version": "0.1.0",
   "description": "TypeScript SDK for the Toss Securities Open API",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wi9ine/toss-sdk.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://github.com/wi9ine/toss-sdk#readme",
+  "bugs": "https://github.com/wi9ine/toss-sdk/issues",
+  "keywords": [
+    "toss",
+    "securities",
+    "openapi",
+    "typescript",
+    "sdk"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -15,6 +30,9 @@
     "dist"
   ],
   "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=22.18.0"
   },
@@ -24,6 +42,7 @@
   "scripts": {
     "generate": "openapi-ts",
     "build": "tsc -p tsconfig.json",
+    "prepack": "pnpm build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test",
     "test:live": "pnpm build && node --env-file=../../.env scripts/smoke.ts"

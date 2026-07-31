@@ -1,19 +1,40 @@
 {
-  "name": "toss-invest-mcp",
+  "name": "@wi9ine/toss-invest-mcp",
   "version": "0.1.0",
-  "private": true,
+  "description": "Local MCP server for the Toss Securities Open API",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wi9ine/toss-sdk.git",
+    "directory": "apps/mcp"
+  },
+  "homepage": "https://github.com/wi9ine/toss-sdk#readme",
+  "bugs": "https://github.com/wi9ine/toss-sdk/issues",
+  "keywords": [
+    "toss",
+    "securities",
+    "mcp",
+    "model-context-protocol"
+  ],
   "type": "module",
   "bin": {
     "toss-invest-mcp": "./dist/stdio.js"
   },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "prepack": "pnpm build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.0.0",
-    "toss-sdk": "workspace:*",
+    "@wi9ine/toss-invest-sdk": "workspace:*",
     "zod": "4.4.3"
   },
   "devDependencies": {
