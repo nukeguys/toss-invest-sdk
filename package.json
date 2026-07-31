@@ -1,38 +1,21 @@
 {
-  "name": "toss-sdk",
-  "version": "0.1.0",
-  "description": "TypeScript SDK for the Toss Securities Open API",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
-  "files": [
-    "dist"
-  ],
-  "sideEffects": false,
-  "engines": {
-    "node": ">=22.18.0"
-  },
+  "name": "toss-invest",
+  "private": true,
   "scripts": {
-    "generate": "openapi-ts",
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "generate": "pnpm --filter toss-sdk generate",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm build && pnpm -r typecheck",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint .",
     "check": "biome check . && pnpm typecheck",
-    "test": "pnpm build && node --test",
-    "test:live": "pnpm build && node --env-file=.env scripts/smoke.ts"
+    "test": "pnpm build && pnpm -r test",
+    "test:live": "pnpm --filter toss-sdk test:live",
+    "mcp:build": "pnpm build",
+    "mcp:test": "pnpm build && pnpm --filter toss-invest-mcp test",
+    "mcp:inspect": "pnpm build && pnpm dlx @modelcontextprotocol/inspector node --env-file=.env apps/mcp/dist/stdio.js"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.6",
-    "@hey-api/openapi-ts": "0.99.0",
-    "@types/node": "26.1.2",
-    "typescript": "6.0.3"
+    "@biomejs/biome": "2.5.6"
   }
 }
