@@ -17,7 +17,10 @@ const client = createTossInvestClient({
   clientId: requiredEnv('TOSS_CLIENT_ID'),
   clientSecret: requiredEnv('TOSS_CLIENT_SECRET'),
 });
-const server = createTossInvestMcpServer(client);
+const server = createTossInvestMcpServer(client, {
+  allowHighValueOrders: process.argv.includes('--allow-high-value-orders'),
+  allowTrading: process.argv.includes('--allow-trading'),
+});
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {

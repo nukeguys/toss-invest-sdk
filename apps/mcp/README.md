@@ -1,19 +1,40 @@
 # Toss Invest MCP
 
-Local, read-only MCP server backed by the Toss Securities Open API SDK in this repository. It uses
-the standard `stdio` transport, so any MCP-compatible host that can start a local process can use
-it. The server never exposes order creation, modification, or cancellation tools.
+Local MCP server backed by the Toss Securities Open API SDK in this repository. It uses the
+standard `stdio` transport, so any MCP-compatible host that can start a local process can use it.
+The server is read-only unless trading is explicitly enabled.
 
 ## Tools
 
 - `toss_get_prices`: current prices for up to 200 symbols
+- `toss_get_trades`: recent trades for one symbol
+- `toss_get_price_limit`: daily price limits for one symbol
 - `toss_get_orderbook`: bid and ask quotes for one symbol
 - `toss_get_candles`: minute or daily OHLCV candles
 - `toss_get_stocks`: basic information for up to 200 symbols
+- `toss_get_stock_warnings`: warnings and trading cautions for one symbol
+- `toss_get_exchange_rate`: KRW/USD reference exchange rate
+- `toss_get_kr_market_calendar`: Korean market schedule
+- `toss_get_us_market_calendar`: US market schedule
+- `toss_get_rankings`: market and Toss Securities stock rankings
+- `toss_get_market_indicator_prices`: market indicator prices
+- `toss_get_market_indicator_candles`: market indicator candles
+- `toss_get_market_indicator_investor_trading`: KOSPI/KOSDAQ investor trading amounts
 - `toss_list_accounts`: supported brokerage accounts and their `accountSeq`
 - `toss_get_holdings`: holdings for an account
 - `toss_list_orders`: open or closed order history for an account
+- `toss_get_order`: details for one order
+- `toss_list_conditional_orders`: open or closed conditional orders
+- `toss_get_conditional_order`: details for one conditional order
 - `toss_get_buying_power`: cash-based buying power for an account and currency
+- `toss_get_sellable_quantity`: sellable quantity for one holding
+- `toss_get_commissions`: Korean and US trading commissions
+
+With trading enabled, the server also exposes:
+
+- `toss_create_order`, `toss_modify_order`, `toss_cancel_order`
+- `toss_create_conditional_order`, `toss_modify_conditional_order`,
+  `toss_cancel_conditional_order`
 
 Account-specific tools require the `accountSeq` returned by `toss_list_accounts`.
 
@@ -39,6 +60,28 @@ The examples for popular hosts below use these placeholders:
 
 Credentials stay in the ignored root `.env` file. Do not put them directly in MCP host
 configuration files.
+
+## Trading permissions
+
+The server starts in read-only mode. Add `--allow-trading` to the server arguments to register
+order creation, modification, and cancellation tools:
+
+```sh
+node --env-file=.env apps/mcp/dist/stdio.js --allow-trading
+```
+
+Orders worth at least KRW 100 million require Toss Securities' `confirmHighValueOrder` field. To
+allow that field, add both permission flags:
+
+```sh
+node --env-file=.env apps/mcp/dist/stdio.js \
+  --allow-trading \
+  --allow-high-value-orders
+```
+
+Append the same flags to the `args` array in any host configuration below. Trading tools are
+marked as non-read-only and destructive so the host can apply its approval policy. Persistently
+approving those tools allows unattended automated trading; only do this for a trusted setup.
 
 ## Codex app, CLI, and IDE extension
 
@@ -193,8 +236,11 @@ Verify it with `gemini mcp list`. See the
 ## Safety notes
 
 - The MCP server is local-only and starts one authenticated Toss client per host process.
+- Trading tools are absent unless `--allow-trading` is set.
+- `confirmHighValueOrder: true` is rejected unless `--allow-high-value-orders` is also set.
 - It does not log to stdout because stdout is reserved for MCP messages.
 - Token issuance, caching, expiry refresh, and concurrent request deduplication remain handled by
   `createTossInvestClient`.
 - A `401` response is never retried automatically, including for order-history requests.
+- Order creation, modification, and cancellation are never retried automatically.
 - Rebuild with `pnpm mcp:build` after changing either the SDK or MCP source.
