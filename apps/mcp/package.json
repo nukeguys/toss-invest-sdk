@@ -1,15 +1,15 @@
 {
   "name": "@wi9ine/toss-invest-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Local MCP server for the Toss Securities Open API",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wi9ine/toss-sdk.git",
+    "url": "git+https://github.com/wi9ine/toss-invest-sdk.git",
     "directory": "apps/mcp"
   },
-  "homepage": "https://github.com/wi9ine/toss-sdk#readme",
-  "bugs": "https://github.com/wi9ine/toss-sdk/issues",
+  "homepage": "https://github.com/wi9ine/toss-invest-sdk#readme",
+  "bugs": "https://github.com/wi9ine/toss-invest-sdk/issues",
   "keywords": [
     "toss",
     "securities",

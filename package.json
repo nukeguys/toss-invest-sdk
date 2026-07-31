@@ -1,5 +1,5 @@
 {
-  "name": "toss-invest",
+  "name": "toss-invest-sdk",
   "private": true,
   "scripts": {
     "generate": "pnpm --filter @wi9ine/toss-invest-sdk generate",
