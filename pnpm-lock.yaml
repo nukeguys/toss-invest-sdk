@@ -35,6 +35,10 @@ importers:
         version: 6.0.3
 
   packages/sdk:
+    dependencies:
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
     devDependencies:
       '@hey-api/openapi-ts':
         specifier: 0.99.0

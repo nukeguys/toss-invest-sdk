@@ -241,6 +241,8 @@ Verify it with `gemini mcp list`. See the
 - It does not log to stdout because stdout is reserved for MCP messages.
 - Token issuance, caching, expiry refresh, and concurrent request deduplication remain handled by
   `createTossInvestClient`.
+- MCP inputs reuse the SDK's generated Zod schemas; MCP-specific account mapping, trading
+  permissions, and cross-field order rules are validated by the server.
 - A `401` response is never retried automatically, including for order-history requests.
 - Order creation, modification, and cancellation are never retried automatically.
 - Rebuild with `pnpm mcp:build` after changing either the SDK or MCP source.

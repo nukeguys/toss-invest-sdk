@@ -157,13 +157,13 @@ test('exposes trading tools only when enabled and validates order input', async 
       {
         body: {
           clientOrderId: 'test-order-1',
-          confirmHighValueOrder: undefined,
+          confirmHighValueOrder: false,
           orderType: 'LIMIT',
           price: '70000',
           quantity: '1',
           side: 'BUY',
           symbol: '005930',
-          timeInForce: undefined,
+          timeInForce: 'DAY',
         },
         headers: { 'X-Tossinvest-Account': 7 },
         throwOnError: true,
@@ -197,7 +197,7 @@ test('exposes trading tools only when enabled and validates order input', async 
     {
       body: {
         clientOrderId: 'conditional-order-1',
-        confirmHighValueOrder: undefined,
+        confirmHighValueOrder: false,
         expireDate: '2026-12-31',
         first: { orderPrice: '69000', orderSide: 'BUY', triggerPrice: '70000' },
         orderType: 'LIMIT',

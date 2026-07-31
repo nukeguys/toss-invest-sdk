@@ -1,34 +1,50 @@
 import { type CallToolResult, McpServer } from '@modelcontextprotocol/server';
-import type {
-  ConditionalOrderCreateRequest,
-  ConditionalOrderModifyRequest,
-  OrderCreateRequest,
-  OrderModifyRequest,
-  TossInvestClient,
+import {
+  type ConditionalOrderCreateRequest,
+  type ConditionalOrderModifyRequest,
+  type OrderCreateRequest,
+  type OrderModifyRequest,
+  type TossInvestClient,
+  zConditionRequest,
+  zCreateConditionalOrderBody,
+  zCreateOrderBody,
+  zGetBuyingPowerQuery,
+  zGetCandlesQuery,
+  zGetConditionalOrderPath,
+  zGetConditionalOrdersQuery,
+  zGetExchangeRateQuery,
+  zGetHoldingsQuery,
+  zGetKrMarketCalendarQuery,
+  zGetMarketIndicatorCandlesPath,
+  zGetMarketIndicatorCandlesQuery,
+  zGetMarketIndicatorInvestorTradingPath,
+  zGetMarketIndicatorInvestorTradingQuery,
+  zGetOrderbookQuery,
+  zGetOrderPath,
+  zGetOrdersQuery,
+  zGetPriceLimitQuery,
+  zGetRankingsQuery,
+  zGetSellableQuantityQuery,
+  zGetStockWarningsPath,
+  zGetTradesQuery,
+  zGetUsMarketCalendarQuery,
+  zModifyConditionalOrderBody,
+  zModifyOrderBody,
 } from 'toss-sdk';
 import { z } from 'zod';
 
-const symbol = z
-  .string()
-  .regex(/^[A-Za-z0-9.-]+$/, '영문, 숫자, 마침표, 하이픈만 사용할 수 있습니다.');
+const [quantityOrderBody, amountOrderBody] = zCreateOrderBody.options;
+const symbol = zGetOrderbookQuery.shape.symbol;
 const symbols = z.array(symbol).min(1).max(200);
-const indicatorSymbol = z
-  .string()
-  .regex(/^[A-Z0-9_]+$/, '대문자, 숫자, 밑줄만 사용할 수 있습니다.');
+const indicatorSymbol = zGetMarketIndicatorCandlesPath.shape.symbol;
 const indicatorSymbols = z.array(indicatorSymbol).min(1).max(200);
 const accountSeq = z.number().int().positive();
-const identifier = z.string().min(1);
-const positiveDecimal = z
-  .string()
-  .regex(/^\d+(?:\.\d+)?$/, '0보다 큰 숫자 문자열이어야 합니다.')
-  .refine((value) => Number(value) > 0, '0보다 큰 값이어야 합니다.');
-const clientOrderId = z
-  .string()
-  .min(1)
-  .max(36)
-  .regex(/^[A-Za-z0-9_-]+$/, '영문, 숫자, 하이픈, 밑줄만 사용할 수 있습니다.');
-const currency = z.enum(['KRW', 'USD']);
-const date = z.iso.date();
+const identifier = zGetOrderPath.shape.orderId.min(1);
+const positiveDecimal = zConditionRequest.shape.triggerPrice.refine(
+  (value) => Number(value) > 0,
+  '0보다 큰 값이어야 합니다.',
+);
+const clientOrderId = quantityOrderBody.shape.clientOrderId.unwrap().min(1);
 const readOnly = {
   destructiveHint: false,
   idempotentHint: true,
@@ -46,17 +62,18 @@ const orderInput = z
   .object({
     accountSeq,
     clientOrderId,
-    confirmHighValueOrder: z
-      .boolean()
-      .optional()
-      .describe('1억원 이상 주문 확인. --allow-high-value-orders 권한이 필요합니다.'),
-    orderAmount: positiveDecimal.optional(),
-    orderType: z.enum(['LIMIT', 'MARKET']),
+    confirmHighValueOrder: quantityOrderBody.shape.confirmHighValueOrder.describe(
+      '1억원 이상 주문 확인. --allow-high-value-orders 권한이 필요합니다.',
+    ),
+    orderAmount: amountOrderBody.shape.orderAmount
+      .refine((value) => Number(value) > 0, '0보다 큰 값이어야 합니다.')
+      .optional(),
+    orderType: quantityOrderBody.shape.orderType,
     price: positiveDecimal.optional(),
     quantity: positiveDecimal.optional(),
-    side: z.enum(['BUY', 'SELL']),
+    side: quantityOrderBody.shape.side,
     symbol,
-    timeInForce: z.enum(['DAY', 'CLS']).optional(),
+    timeInForce: quantityOrderBody.shape.timeInForce,
   })
   .superRefine(({ orderAmount, orderType, price, quantity, timeInForce }, context) => {
     if ((quantity === undefined) === (orderAmount === undefined)) {
@@ -92,14 +109,16 @@ const orderInput = z
 const modifyOrderInput = z
   .object({
     accountSeq,
-    confirmHighValueOrder: z
-      .boolean()
-      .optional()
-      .describe('1억원 이상 주문 확인. --allow-high-value-orders 권한이 필요합니다.'),
+    confirmHighValueOrder: zModifyOrderBody.shape.confirmHighValueOrder.describe(
+      '1억원 이상 주문 확인. --allow-high-value-orders 권한이 필요합니다.',
+    ),
     orderId: identifier,
-    orderType: z.enum(['LIMIT', 'MARKET']),
+    orderType: zModifyOrderBody.shape.orderType,
     price: positiveDecimal.optional(),
-    quantity: positiveDecimal.optional(),
+    quantity: zModifyOrderBody.shape.quantity
+      .unwrap()
+      .refine((value) => Number(value) > 0, '0보다 큰 값이어야 합니다.')
+      .optional(),
   })
   .superRefine(({ orderType, price }, context) => {
     if (orderType === 'LIMIT' && price === undefined) {
@@ -118,25 +137,10 @@ const modifyOrderInput = z
     }
   });
 
-const condition = z.object({
+const condition = zConditionRequest.extend({
   orderPrice: positiveDecimal.optional(),
-  orderSide: z.enum(['BUY', 'SELL']),
   triggerPrice: positiveDecimal,
 });
-
-const conditionalOrderFields = {
-  accountSeq,
-  confirmHighValueOrder: z
-    .boolean()
-    .optional()
-    .describe('1억원 이상 주문 확인. --allow-high-value-orders 권한이 필요합니다.'),
-  expireDate: date,
-  first: condition,
-  orderType: z.enum(['LIMIT', 'MARKET']),
-  quantity: positiveDecimal,
-  second: condition.optional(),
-  type: z.enum(['SINGLE', 'OCO', 'OTO']),
-};
 
 function validateConditionalOrder(
   value: {
@@ -183,10 +187,30 @@ function validateConditionalOrder(
 }
 
 const createConditionalOrderInput = z
-  .object({ ...conditionalOrderFields, clientOrderId, symbol })
+  .object({
+    accountSeq,
+    ...zCreateConditionalOrderBody.shape,
+    clientOrderId,
+    confirmHighValueOrder: zCreateConditionalOrderBody.shape.confirmHighValueOrder.describe(
+      '1억원 이상 주문 확인. --allow-high-value-orders 권한이 필요합니다.',
+    ),
+    first: condition,
+    quantity: positiveDecimal,
+    second: condition.optional(),
+  })
   .superRefine(validateConditionalOrder);
 const modifyConditionalOrderInput = z
-  .object({ ...conditionalOrderFields, conditionalOrderId: identifier })
+  .object({
+    accountSeq,
+    ...zModifyConditionalOrderBody.shape,
+    conditionalOrderId: zGetConditionalOrderPath.shape.conditionalOrderId.min(1),
+    confirmHighValueOrder: zModifyConditionalOrderBody.shape.confirmHighValueOrder.describe(
+      '1억원 이상 주문 확인. --allow-high-value-orders 권한이 필요합니다.',
+    ),
+    first: condition,
+    quantity: positiveDecimal,
+    second: condition.optional(),
+  })
   .superRefine(validateConditionalOrder);
 
 export interface TossInvestMcpServerOptions {
@@ -259,10 +283,7 @@ export function createTossInvestMcpServer(
     {
       annotations: readOnly,
       description: '한 종목의 최근 체결 내역을 최대 50건까지 조회합니다.',
-      inputSchema: z.object({
-        count: z.number().int().min(1).max(50).optional(),
-        symbol: symbol.describe('종목 심볼. 예: 005930 또는 AAPL'),
-      }),
+      inputSchema: zGetTradesQuery,
       title: '최근 체결 조회',
     },
     ({ count, symbol }) =>
@@ -274,7 +295,7 @@ export function createTossInvestMcpServer(
     {
       annotations: readOnly,
       description: '한 종목의 당일 가격 제한 정보를 조회합니다.',
-      inputSchema: z.object({ symbol }),
+      inputSchema: zGetPriceLimitQuery,
       title: '가격 제한 조회',
     },
     ({ symbol }) => call(() => client.getPriceLimit({ query: { symbol }, throwOnError: true })),
@@ -285,7 +306,7 @@ export function createTossInvestMcpServer(
     {
       annotations: readOnly,
       description: '한 종목의 매수·매도 호가와 잔량을 조회합니다.',
-      inputSchema: z.object({ symbol: symbol.describe('종목 심볼. 예: 005930 또는 AAPL') }),
+      inputSchema: zGetOrderbookQuery,
       title: '종목 호가 조회',
     },
     ({ symbol }) => call(() => client.getOrderbook({ query: { symbol }, throwOnError: true })),
@@ -296,13 +317,7 @@ export function createTossInvestMcpServer(
     {
       annotations: readOnly,
       description: '한 종목의 분봉 또는 일봉 OHLCV 데이터를 최대 200개까지 조회합니다.',
-      inputSchema: z.object({
-        adjusted: z.boolean().optional().describe('수정주가 적용 여부. 기본값은 true입니다.'),
-        before: z.iso.datetime({ offset: true }).optional().describe('조회 상한 시각(ISO 8601)'),
-        count: z.number().int().min(1).max(200).optional().describe('조회할 봉 수'),
-        interval: z.enum(['1m', '1d']).describe('1분봉 또는 일봉'),
-        symbol: symbol.describe('종목 심볼. 예: 005930 또는 AAPL'),
-      }),
+      inputSchema: zGetCandlesQuery,
       title: '종목 캔들 조회',
     },
     ({ adjusted, before, count, interval, symbol }) =>
@@ -333,7 +348,7 @@ export function createTossInvestMcpServer(
     {
       annotations: readOnly,
       description: '한 종목의 투자경고, 거래정지 등 투자 유의사항을 조회합니다.',
-      inputSchema: z.object({ symbol }),
+      inputSchema: zGetStockWarningsPath,
       title: '종목 유의사항 조회',
     },
     ({ symbol }) => call(() => client.getStockWarnings({ path: { symbol }, throwOnError: true })),
@@ -344,11 +359,7 @@ export function createTossInvestMcpServer(
     {
       annotations: readOnly,
       description: '원화와 달러 사이의 참고 환율을 조회합니다.',
-      inputSchema: z.object({
-        baseCurrency: currency,
-        dateTime: z.iso.datetime({ offset: true }).optional(),
-        quoteCurrency: currency,
-      }),
+      inputSchema: zGetExchangeRateQuery,
       title: '환율 조회',
     },
     ({ baseCurrency, dateTime, quoteCurrency }) =>
@@ -365,7 +376,7 @@ export function createTossInvestMcpServer(
     {
       annotations: readOnly,
       description: '기준일의 국내 시장 운영 시간과 거래 가능 여부를 조회합니다.',
-      inputSchema: z.object({ date: date.optional() }),
+      inputSchema: zGetKrMarketCalendarQuery,
       title: '국내 장 운영 정보 조회',
     },
     ({ date }) => call(() => client.getKrMarketCalendar({ query: { date }, throwOnError: true })),
@@ -376,7 +387,7 @@ export function createTossInvestMcpServer(
     {
       annotations: readOnly,
       description: '기준일의 미국 시장 운영 시간과 거래 가능 여부를 조회합니다.',
-      inputSchema: z.object({ date: date.optional() }),
+      inputSchema: zGetUsMarketCalendarQuery,
       title: '미국 장 운영 정보 조회',
     },
     ({ date }) => call(() => client.getUsMarketCalendar({ query: { date }, throwOnError: true })),
@@ -387,20 +398,7 @@ export function createTossInvestMcpServer(
     {
       annotations: readOnly,
       description: '시장 또는 토스증권 기준 거래대금, 거래량, 등락률 순위를 조회합니다.',
-      inputSchema: z.object({
-        count: z.number().int().min(1).max(100).optional(),
-        duration: z.enum(['realtime', '1d', '1w', '1mo', '3mo', '6mo', '1y']),
-        excludeInvestmentCaution: z.boolean().optional(),
-        marketCountry: z.enum(['KR', 'US']),
-        type: z.enum([
-          'MARKET_TRADING_AMOUNT',
-          'MARKET_TRADING_VOLUME',
-          'TOP_GAINERS',
-          'TOP_LOSERS',
-          'TOSS_SECURITIES_TRADING_AMOUNT',
-          'TOSS_SECURITIES_TRADING_VOLUME',
-        ]),
-      }),
+      inputSchema: zGetRankingsQuery,
       title: '주식 랭킹 조회',
     },
     ({ count, duration, excludeInvestmentCaution, marketCountry, type }) =>
@@ -435,10 +433,8 @@ export function createTossInvestMcpServer(
       annotations: readOnly,
       description: '한 시장 지표의 분봉 또는 일봉 데이터를 최대 200개까지 조회합니다.',
       inputSchema: z.object({
-        before: z.iso.datetime({ offset: true }).optional(),
-        count: z.number().int().min(1).max(200).optional(),
-        interval: z.enum(['1m', '1d']),
-        symbol: indicatorSymbol,
+        ...zGetMarketIndicatorCandlesPath.shape,
+        ...zGetMarketIndicatorCandlesQuery.shape,
       }),
       title: '시장 지표 캔들 조회',
     },
@@ -458,10 +454,8 @@ export function createTossInvestMcpServer(
       annotations: readOnly,
       description: '코스피 또는 코스닥의 투자자별 매매대금을 조회합니다.',
       inputSchema: z.object({
-        count: z.number().int().min(1).max(100).optional(),
-        interval: z.enum(['1d', '1w', '1mo', '1y']),
-        symbol: z.enum(['KOSPI', 'KOSDAQ']),
-        until: date.optional(),
+        ...zGetMarketIndicatorInvestorTradingPath.shape,
+        ...zGetMarketIndicatorInvestorTradingQuery.shape,
       }),
       title: '투자자별 매매대금 조회',
     },
@@ -493,7 +487,7 @@ export function createTossInvestMcpServer(
       description: '선택한 계좌의 국내·미국 보유 주식과 평가 정보를 조회합니다.',
       inputSchema: z.object({
         accountSeq: accountSeq.describe('toss_list_accounts가 반환한 accountSeq'),
-        symbol: symbol.optional().describe('특정 종목만 조회할 때 지정합니다.'),
+        ...zGetHoldingsQuery.shape,
       }),
       title: '보유 주식 조회',
     },
@@ -514,12 +508,7 @@ export function createTossInvestMcpServer(
       description: '선택한 계좌의 진행 중이거나 종료된 주문 내역을 조회합니다.',
       inputSchema: z.object({
         accountSeq: accountSeq.describe('toss_list_accounts가 반환한 accountSeq'),
-        cursor: z.string().optional().describe('종료 주문 다음 페이지 커서'),
-        from: z.iso.date().optional().describe('조회 시작일(YYYY-MM-DD, KST)'),
-        limit: z.number().int().min(1).max(100).optional(),
-        status: z.enum(['OPEN', 'CLOSED']),
-        symbol: symbol.optional(),
-        to: z.iso.date().optional().describe('조회 종료일(YYYY-MM-DD, KST)'),
+        ...zGetOrdersQuery.shape,
       }),
       title: '주문 내역 조회',
     },
@@ -538,7 +527,7 @@ export function createTossInvestMcpServer(
     {
       annotations: readOnly,
       description: '선택한 계좌의 주문 한 건을 상세 조회합니다.',
-      inputSchema: z.object({ accountSeq, orderId: identifier }),
+      inputSchema: z.object({ accountSeq, ...zGetOrderPath.shape }),
       title: '주문 상세 조회',
     },
     ({ accountSeq, orderId }) =>
@@ -558,10 +547,7 @@ export function createTossInvestMcpServer(
       description: '선택한 계좌의 진행 중이거나 종료된 조건주문 목록을 조회합니다.',
       inputSchema: z.object({
         accountSeq,
-        cursor: z.string().optional(),
-        limit: z.number().int().min(1).max(100).optional(),
-        status: z.enum(['OPEN', 'CLOSED']),
-        symbol: symbol.optional(),
+        ...zGetConditionalOrdersQuery.shape,
       }),
       title: '조건주문 목록 조회',
     },
@@ -580,7 +566,7 @@ export function createTossInvestMcpServer(
     {
       annotations: readOnly,
       description: '선택한 계좌의 조건주문 한 건을 상세 조회합니다.',
-      inputSchema: z.object({ accountSeq, conditionalOrderId: identifier }),
+      inputSchema: z.object({ accountSeq, ...zGetConditionalOrderPath.shape }),
       title: '조건주문 상세 조회',
     },
     ({ accountSeq, conditionalOrderId }) =>
@@ -600,7 +586,7 @@ export function createTossInvestMcpServer(
       description: '선택한 계좌에서 원화 또는 달러로 주문 가능한 현금 기반 금액을 조회합니다.',
       inputSchema: z.object({
         accountSeq: accountSeq.describe('toss_list_accounts가 반환한 accountSeq'),
-        currency: z.enum(['KRW', 'USD']),
+        ...zGetBuyingPowerQuery.shape,
       }),
       title: '매수 가능 금액 조회',
     },
@@ -619,7 +605,7 @@ export function createTossInvestMcpServer(
     {
       annotations: readOnly,
       description: '선택한 계좌에서 특정 종목을 매도할 수 있는 수량을 조회합니다.',
-      inputSchema: z.object({ accountSeq, symbol }),
+      inputSchema: z.object({ accountSeq, ...zGetSellableQuantityQuery.shape }),
       title: '매도 가능 수량 조회',
     },
     ({ accountSeq, symbol }) =>

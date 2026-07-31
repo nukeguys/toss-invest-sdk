@@ -21,5 +21,14 @@ export default defineConfig({
         strategy: 'single',
       },
     },
+    {
+      name: 'zod',
+      dates: {
+        offset: true,
+      },
+      metadata: true,
+      requests: true,
+      responses: false,
+    },
   ],
 });

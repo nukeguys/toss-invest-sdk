@@ -56,6 +56,18 @@ const holdings = await client.getHoldings({
 See the [Toss Securities account API documentation](https://developers.tossinvest.com/docs/account)
 for account selection details.
 
+### Generated Zod schemas
+
+The SDK exports Zod request schemas generated from the same OpenAPI specification. These can be
+used to validate API inputs without duplicating enums, formats, or range constraints.
+
+```ts
+import { zCreateOrderBody, zGetPricesQuery } from 'toss-sdk';
+
+zCreateOrderBody.parse(order);
+zGetPricesQuery.parse({ symbols: '005930,AAPL' });
+```
+
 ## Live smoke test
 
 Register your current public IP in Toss Securities WTS, then copy the environment template and fill
@@ -77,8 +89,9 @@ pnpm check
 pnpm test
 ```
 
-- `pnpm generate` regenerates `packages/sdk/src/generated` from the official Toss Securities OAS
-  and formats it with Biome. The downloaded specification is saved as
+- `pnpm generate` regenerates the SDK, TypeScript types, and Zod schemas in
+  `packages/sdk/src/generated` from the official Toss Securities OAS and formats them with Biome.
+  The downloaded specification is saved as
   `packages/sdk/src/generated/spec.json`.
 - `pnpm check` runs Biome and TypeScript checks.
 - `pnpm test` builds the package and runs the Node.js tests.
