@@ -1,5 +1,7 @@
 # Toss Securities Open API SDK
 
+> Unofficial community project. This package is not affiliated with or endorsed by Toss Securities.
+
 TypeScript SDK generated from the Toss Securities Open API specification with Hey API. Access
 tokens are issued lazily, cached until 30 seconds before expiry, and shared by concurrent requests.
 

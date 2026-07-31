@@ -1,5 +1,7 @@
 # Toss Invest MCP
 
+> Unofficial community project. This package is not affiliated with or endorsed by Toss Securities.
+
 Local MCP server backed by the Toss Securities Open API SDK in this repository. It uses the
 standard `stdio` transport, so any MCP-compatible host that can start a local process can use it.
 The server is read-only unless trading is explicitly enabled.

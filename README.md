@@ -1,5 +1,7 @@
 # Toss Securities Open API
 
+> Unofficial community project. This project is not affiliated with or endorsed by Toss Securities.
+
 pnpm workspace for a TypeScript SDK and a local MCP server for the Toss Securities Open API. The
 MCP server is read-only unless trading is explicitly enabled.
 
