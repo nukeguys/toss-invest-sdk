@@ -4,10 +4,10 @@ Local MCP server backed by the Toss Securities Open API SDK in this repository. 
 standard `stdio` transport, so any MCP-compatible host that can start a local process can use it.
 The server is read-only unless trading is explicitly enabled.
 
-After publication, run it without cloning this repository:
+Run it without cloning this repository:
 
 ```sh
-TOSS_CLIENT_ID=... TOSS_CLIENT_SECRET=... pnpm dlx @wi9ine/toss-invest-mcp
+TOSS_CLIENT_ID=... TOSS_CLIENT_SECRET=... npx -y @wi9ine/toss-invest-mcp
 ```
 
 ## Tools
@@ -44,43 +44,20 @@ With trading enabled, the server also exposes:
 
 Account-specific tools require the `accountSeq` returned by `toss_list_accounts`.
 
-## Build and inspect
-
-Create the repository root `.env` from `.env.example`, then build both packages.
-
-```sh
-cp .env.example .env
-pnpm mcp:build
-```
-
-Run the server with the official [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector):
-
-```sh
-pnpm mcp:inspect
-```
-
-The examples for popular hosts below use these placeholders:
-
-- `/ABSOLUTE/PATH/TO/toss-sdk`: this repository's absolute path
-- `node`: replace with the result of `command -v node` if a desktop host cannot find Node.js
-
-Credentials stay in the ignored root `.env` file. Do not put them directly in MCP host
-configuration files.
-
 ## Trading permissions
 
 The server starts in read-only mode. Add `--allow-trading` to the server arguments to register
 order creation, modification, and cancellation tools:
 
 ```sh
-node --env-file=.env apps/mcp/dist/stdio.js --allow-trading
+npx -y @wi9ine/toss-invest-mcp --allow-trading
 ```
 
 Orders worth at least KRW 100 million require Toss Securities' `confirmHighValueOrder` field. To
 allow that field, add both permission flags:
 
 ```sh
-node --env-file=.env apps/mcp/dist/stdio.js \
+npx -y @wi9ine/toss-invest-mcp \
   --allow-trading \
   --allow-high-value-orders
 ```
@@ -91,23 +68,13 @@ approving those tools allows unattended automated trading; only do this for a tr
 
 ## Codex app, CLI, and IDE extension
 
-These Codex clients share `~/.codex/config.toml`. Add the server from the CLI:
-
-```sh
-codex mcp add toss-invest -- node \
-  --env-file=/ABSOLUTE/PATH/TO/toss-sdk/.env \
-  /ABSOLUTE/PATH/TO/toss-sdk/apps/mcp/dist/stdio.js
-```
-
-Or configure it directly:
+These Codex clients share `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.toss-invest]
-command = "node"
-args = [
-  "--env-file=/ABSOLUTE/PATH/TO/toss-sdk/.env",
-  "/ABSOLUTE/PATH/TO/toss-sdk/apps/mcp/dist/stdio.js",
-]
+command = "npx"
+args = ["-y", "@wi9ine/toss-invest-mcp"]
+env = { TOSS_CLIENT_ID = "...", TOSS_CLIENT_SECRET = "..." }
 ```
 
 Restart the client and use `/mcp` to verify the connection. See the
@@ -124,11 +91,12 @@ Open **Settings → Developer → Edit Config**, or edit the platform configurat
 {
   "mcpServers": {
     "toss-invest": {
-      "command": "node",
-      "args": [
-        "--env-file=/ABSOLUTE/PATH/TO/toss-sdk/.env",
-        "/ABSOLUTE/PATH/TO/toss-sdk/apps/mcp/dist/stdio.js"
-      ]
+      "command": "npx",
+      "args": ["-y", "@wi9ine/toss-invest-mcp"],
+      "env": {
+        "TOSS_CLIENT_ID": "...",
+        "TOSS_CLIENT_SECRET": "..."
+      }
     }
   }
 }
@@ -144,11 +112,12 @@ Add the same server to the user scope:
 ```sh
 claude mcp add-json --scope user toss-invest '{
   "type": "stdio",
-  "command": "node",
-  "args": [
-    "--env-file=/ABSOLUTE/PATH/TO/toss-sdk/.env",
-    "/ABSOLUTE/PATH/TO/toss-sdk/apps/mcp/dist/stdio.js"
-  ]
+  "command": "npx",
+  "args": ["-y", "@wi9ine/toss-invest-mcp"],
+  "env": {
+    "TOSS_CLIENT_ID": "...",
+    "TOSS_CLIENT_SECRET": "..."
+  }
 }'
 ```
 
@@ -163,11 +132,12 @@ Create `~/.cursor/mcp.json` for global use, or `.cursor/mcp.json` in a project:
 {
   "mcpServers": {
     "toss-invest": {
-      "command": "node",
-      "args": [
-        "--env-file=/ABSOLUTE/PATH/TO/toss-sdk/.env",
-        "/ABSOLUTE/PATH/TO/toss-sdk/apps/mcp/dist/stdio.js"
-      ]
+      "command": "npx",
+      "args": ["-y", "@wi9ine/toss-invest-mcp"],
+      "env": {
+        "TOSS_CLIENT_ID": "...",
+        "TOSS_CLIENT_SECRET": "..."
+      }
     }
   }
 }
@@ -184,9 +154,12 @@ Create `.vscode/mcp.json` in a project, or run **MCP: Open User Configuration** 
   "servers": {
     "toss-invest": {
       "type": "stdio",
-      "command": "node",
-      "args": ["/ABSOLUTE/PATH/TO/toss-sdk/apps/mcp/dist/stdio.js"],
-      "envFile": "/ABSOLUTE/PATH/TO/toss-sdk/.env"
+      "command": "npx",
+      "args": ["-y", "@wi9ine/toss-invest-mcp"],
+      "env": {
+        "TOSS_CLIENT_ID": "...",
+        "TOSS_CLIENT_SECRET": "..."
+      }
     }
   }
 }
@@ -203,11 +176,12 @@ Open the MCP settings and select **View Raw Config**, or edit
 {
   "mcpServers": {
     "toss-invest": {
-      "command": "node",
-      "args": [
-        "--env-file=/ABSOLUTE/PATH/TO/toss-sdk/.env",
-        "/ABSOLUTE/PATH/TO/toss-sdk/apps/mcp/dist/stdio.js"
-      ]
+      "command": "npx",
+      "args": ["-y", "@wi9ine/toss-invest-mcp"],
+      "env": {
+        "TOSS_CLIENT_ID": "...",
+        "TOSS_CLIENT_SECRET": "..."
+      }
     }
   }
 }
@@ -225,11 +199,12 @@ project:
 {
   "mcpServers": {
     "toss-invest": {
-      "command": "node",
-      "args": [
-        "--env-file=/ABSOLUTE/PATH/TO/toss-sdk/.env",
-        "/ABSOLUTE/PATH/TO/toss-sdk/apps/mcp/dist/stdio.js"
-      ],
+      "command": "npx",
+      "args": ["-y", "@wi9ine/toss-invest-mcp"],
+      "env": {
+        "TOSS_CLIENT_ID": "...",
+        "TOSS_CLIENT_SECRET": "..."
+      },
       "trust": false
     }
   }
@@ -238,6 +213,19 @@ project:
 
 Verify it with `gemini mcp list`. See the
 [Gemini CLI MCP documentation](https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md).
+
+## Local development
+
+Clone the repository, create `.env` from `.env.example`, and build both packages:
+
+```sh
+cp .env.example .env
+pnpm mcp:build
+pnpm mcp:inspect
+```
+
+The host examples above store credentials in their configuration files. Keep those files private
+and do not commit project-level MCP configuration containing real credentials.
 
 ## Safety notes
 
@@ -251,4 +239,4 @@ Verify it with `gemini mcp list`. See the
   permissions, and cross-field order rules are validated by the server.
 - A `401` response is never retried automatically, including for order-history requests.
 - Order creation, modification, and cancellation are never retried automatically.
-- Rebuild with `pnpm mcp:build` after changing either the SDK or MCP source.
+- Local contributors must rebuild with `pnpm mcp:build` after changing either the SDK or MCP source.
