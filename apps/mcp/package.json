@@ -1,6 +1,6 @@
 {
   "name": "@wi9ine/toss-invest-mcp",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "mcpName": "io.github.wi9ine/toss-invest",
   "description": "Local MCP server for the Toss Securities Open API",
   "license": "MIT",

@@ -406,6 +406,370 @@ export type StockWarning = {
   endDate?: string | null;
 };
 
+export type ListedStock = {
+  /**
+   * 종목 심볼.
+   */
+  symbol: string;
+  /**
+   * 종목명 (한글)
+   */
+  name: string;
+  /**
+   * 종목 유형
+   */
+  securityType:
+    | 'STOCK'
+    | 'FOREIGN_STOCK'
+    | 'DEPOSITARY_RECEIPT'
+    | 'INFRASTRUCTURE_FUND'
+    | 'REIT'
+    | 'ETF'
+    | 'FOREIGN_ETF'
+    | 'ETN'
+    | 'STOCK_WARRANTS';
+  /**
+   * 보통주 여부
+   */
+  isCommonShare: boolean;
+  /**
+   * ISIN 코드
+   */
+  isinCode: string;
+};
+
+export type StockInvestorTradingResponse = {
+  /**
+   * 다음 페이지 조회 기준일. 다음 페이지 조회 시 `until` 쿼리 파라미터에 그대로 전달. 더 이상 데이터가 없으면 null
+   */
+  nextUntil?: string | null;
+  /**
+   * 일별 투자자 매매동향 기록 목록 (최신순). 데이터가 없으면 빈 배열
+   */
+  records: Array<StockInvestorTradingRecord>;
+};
+
+export type StockInvestorTradingRecord = {
+  /**
+   * 매매 기준일
+   */
+  date: string;
+  /**
+   * 기록 전체의 마지막 갱신 시각 (투자자별 매매동향과 `foreignerHolding`·`cfd` 반영 포함).
+   * 당일 기록은 장중 잠정치로 계속 갱신되며, `cfd` 반영(T+1)과 외국인 보유 확정 갱신으로
+   * 다음 영업일에도 갱신될 수 있습니다.
+   *
+   */
+  updatedAt: string;
+  /**
+   * 개인. 당일 잠정 기록에는 개인 잠정치가 제공되지 않아 null 이며, 확정치가 반영되는 당일 저녁부터 값이 채워집니다
+   */
+  individual?: InvestorTradingVolume | null;
+  /**
+   * 등록외국인. 미등록 외국인은 포함하지 않으며, 시장 지표의 투자자별 매매대금
+   * (`GET /api/v1/market-indicators/{symbol}/investor-trading`)의 `foreigner`(등록·미등록 합계)와 기준이 다릅니다
+   *
+   */
+  foreigner: InvestorTradingVolume;
+  /**
+   * 기관 합계
+   */
+  institution: StockInstitutionTradingVolume;
+  /**
+   * 기타법인. 당일 잠정 기록에는 제공되지 않아 null 이며, 확정치가 반영되는 당일 저녁부터 값이 채워집니다
+   */
+  otherCorporation?: InvestorTradingVolume | null;
+  /**
+   * 외국인 보유 현황. 해당 일자의 보유 데이터가 아직 반영되지 않았으면 null (당일 저녁 반영, 다음 영업일 오전 확정 갱신될 수 있음)
+   */
+  foreignerHolding?: ForeignerHolding | null;
+  /**
+   * CFD(차액결제거래) 잔고 현황. 해당 일자의 잔고 데이터가 아직 반영되지 않았으면 null (다음 영업일 새벽 반영, T+1)
+   */
+  cfd?: CfdBalance | null;
+};
+
+export type InvestorTradingVolume = {
+  /**
+   * 매수 거래량 (주, 정수)
+   */
+  buyVolume: string;
+  /**
+   * 매도 거래량 (주, 정수)
+   */
+  sellVolume: string;
+  /**
+   * 순매수 거래량 (주, 정수). 매수 거래량 − 매도 거래량, 음수면 순매도
+   */
+  netBuyVolume: string;
+};
+
+export type StockInstitutionTradingVolume = {
+  /**
+   * 기관 합계 매수 거래량 (주, 정수). `breakdown` 7개 항목의 `buyVolume` 합과 일치
+   */
+  buyVolume: string;
+  /**
+   * 기관 합계 매도 거래량 (주, 정수). `breakdown` 7개 항목의 `sellVolume` 합과 일치
+   */
+  sellVolume: string;
+  /**
+   * 기관 합계 순매수 거래량 (주, 정수). 매수 − 매도, 음수면 순매도. `breakdown` 7개 항목의 `netBuyVolume` 합과 일치
+   */
+  netBuyVolume: string;
+  /**
+   * 기관 세부 7개 분류별 거래량. 당일 잠정 기록에는 제공되지 않아 null 이며, 확정치가 반영되는 당일 저녁부터 값이 채워집니다
+   */
+  breakdown?: StockInstitutionTradingBreakdown | null;
+};
+
+/**
+ * 기관 세부 7개 분류별 매매 거래량
+ */
+export type StockInstitutionTradingBreakdown = {
+  /**
+   * 금융투자
+   */
+  financialInvestment: InvestorTradingVolume;
+  /**
+   * 보험
+   */
+  insurance: InvestorTradingVolume;
+  /**
+   * 투신
+   */
+  trust: InvestorTradingVolume;
+  /**
+   * 사모펀드
+   */
+  privateEquityFund: InvestorTradingVolume;
+  /**
+   * 은행
+   */
+  bank: InvestorTradingVolume;
+  /**
+   * 기타금융
+   */
+  otherFinancialInstitution: InvestorTradingVolume;
+  /**
+   * 연기금
+   */
+  pensionFund: InvestorTradingVolume;
+};
+
+export type ForeignerHolding = {
+  /**
+   * 외국인 보유 주식 수 (주, 정수)
+   */
+  holdingQuantity: string;
+  /**
+   * 외국인 보유 한도 주식 수 (주, 정수)
+   */
+  limitQuantity: string;
+  /**
+   * 외국인 보유 비율 (소수 비율). 상장주식수 대비 보유 주식 수. 예: `0.5089` = 50.89%
+   */
+  holdingRate: string;
+};
+
+export type CfdBalance = {
+  /**
+   * CFD 매수 잔고 수량 (주, 정수)
+   */
+  buyBalanceQuantity: string;
+  /**
+   * CFD 매수 잔고 비율 (소수 비율). 상장주식수 대비 매수 잔고 수량. 예: `0.0002` = 0.02%
+   */
+  buyBalanceRate: string;
+  /**
+   * CFD 매도 잔고 수량 (주, 정수)
+   */
+  sellBalanceQuantity: string;
+  /**
+   * CFD 매도 잔고 비율 (소수 비율). 상장주식수 대비 매도 잔고 수량. 예: `0.0001` = 0.01%
+   */
+  sellBalanceRate: string;
+};
+
+export type ProgramTradesResponse = {
+  /**
+   * 다음 페이지 조회 기준일. 다음 페이지 조회 시 `until` 쿼리 파라미터에 그대로 전달. 더 이상 데이터가 없으면 null
+   */
+  nextUntil?: string | null;
+  /**
+   * 일별 프로그램매매 기록 목록 (최신순). 데이터가 없으면 빈 배열
+   */
+  records: Array<ProgramTradeRecord>;
+};
+
+export type ProgramTradeRecord = {
+  /**
+   * 매매 기준일
+   */
+  date: string;
+  /**
+   * 차익거래
+   */
+  arbitrage: ProgramTradingVolume;
+  /**
+   * 비차익거래
+   */
+  nonArbitrage: ProgramTradingVolume;
+};
+
+export type ProgramTradingVolume = {
+  /**
+   * 프로그램 매수 거래량 (주, 정수)
+   */
+  buyVolume: string;
+  /**
+   * 프로그램 매도 거래량 (주, 정수)
+   */
+  sellVolume: string;
+  /**
+   * 프로그램 순매수 거래량 (주, 정수). 매수 − 매도, 음수면 순매도
+   */
+  netBuyVolume: string;
+};
+
+export type ShortSellingResponse = {
+  /**
+   * 다음 페이지 조회 기준일. 다음 페이지 조회 시 `until` 쿼리 파라미터에 그대로 전달. 더 이상 데이터가 없으면 null
+   */
+  nextUntil?: string | null;
+  /**
+   * 일별 공매도 기록 목록 (최신순). 데이터가 없으면 빈 배열
+   */
+  records: Array<ShortSellingRecord>;
+};
+
+export type ShortSellingRecord = {
+  /**
+   * 매매 기준일
+   */
+  date: string;
+  /**
+   * 해당 기록의 마지막 갱신 시각
+   */
+  updatedAt: string;
+  /**
+   * 공매도 거래량 (주, 정수)
+   */
+  shortSellingVolume: string;
+  /**
+   * 공매도 거래대금 (KRW, 정수)
+   */
+  shortSellingAmount: string;
+  /**
+   * 공매도 거래량 비중 (소수 비율, 소수 다섯째 자리까지). 해당 일자 전체 거래량 대비 공매도 거래량.
+   * 분모인 전체 거래량은 정규장 외 세션(장전·장후·시간외단일가)을 포함한 당일 누적입니다.
+   * 기준 거래량 데이터가 없는 날짜는 null, 기준 거래량이 0 이면 `0`. 예: `0.03215` = 3.215%
+   *
+   */
+  shortSellingVolumeRate?: string | null;
+  /**
+   * 공매도 거래대금 비중 (소수 비율, 소수 넷째 자리까지). 해당 일자 전체 거래대금 대비 공매도 거래대금.
+   * 분모인 전체 거래대금은 정규장 외 세션(장전·장후·시간외단일가)을 포함한 당일 누적입니다.
+   * 기준 거래대금 데이터가 없는 날짜는 null, 기준 거래대금이 0 이면 `0`. 예: `0.0318` = 3.18%
+   *
+   */
+  shortSellingAmountRate?: string | null;
+};
+
+export type CreditTradesResponse = {
+  /**
+   * 다음 페이지 조회 기준일. 다음 페이지 조회 시 `until` 쿼리 파라미터에 그대로 전달. 더 이상 데이터가 없으면 null
+   */
+  nextUntil?: string | null;
+  /**
+   * 일별 신용거래 기록 목록 (최신순). 데이터가 없으면 빈 배열
+   */
+  records: Array<CreditTradeRecord>;
+};
+
+export type CreditTradeRecord = {
+  /**
+   * 매매 기준일
+   */
+  date: string;
+  /**
+   * 해당 기록의 마지막 갱신 시각
+   */
+  updatedAt: string;
+  /**
+   * 신용융자 (돈을 빌려 매수하는 신용거래). 해당 일자의 융자 데이터가 없으면 null
+   */
+  marginLoan?: CreditTradeDetail | null;
+  /**
+   * 신용대주 (주식을 빌려 매도하는 개인 신용거래). 기관 간 대차거래
+   * (`GET /api/v1/stocks/{symbol}/securities-lending`)와는 다른 데이터입니다.
+   * 해당 일자의 대주 데이터가 없으면 null
+   *
+   */
+  stockLoan?: CreditTradeDetail | null;
+};
+
+export type CreditTradeDetail = {
+  /**
+   * 신규 수량 (주, 정수)
+   */
+  newQuantity: string;
+  /**
+   * 상환 수량 (주, 정수)
+   */
+  returnQuantity: string;
+  /**
+   * 잔고 수량 (주, 정수)
+   */
+  balanceQuantity: string;
+  /**
+   * 잔고 비율 (소수 비율). 상장주식수 대비 잔고 수량. 예: `0.0042` = 0.42%
+   */
+  balanceRate: string;
+  /**
+   * 공여율 (소수 비율). 매매일의 종목 전체 거래량 중 해당 신용거래 유형의 거래량 비율. 예: `0.09` = 9%
+   */
+  tradingRate: string;
+};
+
+export type SecuritiesLendingResponse = {
+  /**
+   * 다음 페이지 조회 기준일. 다음 페이지 조회 시 `until` 쿼리 파라미터에 그대로 전달. 더 이상 데이터가 없으면 null
+   */
+  nextUntil?: string | null;
+  /**
+   * 일별 대차거래 기록 목록 (최신순). 데이터가 없으면 빈 배열
+   */
+  records: Array<SecuritiesLendingRecord>;
+};
+
+export type SecuritiesLendingRecord = {
+  /**
+   * 매매 기준일
+   */
+  date: string;
+  /**
+   * 해당 기록의 마지막 갱신 시각
+   */
+  updatedAt: string;
+  /**
+   * 대차 체결 수량 (주, 정수)
+   */
+  executionQuantity: string;
+  /**
+   * 대차 상환 수량 (주, 정수)
+   */
+  repaymentQuantity: string;
+  /**
+   * 대차 잔고 수량 (주, 정수)
+   */
+  balanceQuantity: string;
+  /**
+   * 대차 잔고 금액 (KRW, 정수)
+   */
+  balanceAmount: string;
+};
+
 export type ExchangeRateResponse = {
   /**
    * 기준 통화
@@ -1056,16 +1420,17 @@ export type OrderCreateRequest =
        * 주문 유효 조건 (Time In Force). 미전달 시 `DAY`. `orderType` 과 결합되어 주문 방식이 결정됩니다 (예: `LIMIT` + `CLS` = LOC).
        * - `DAY`: 당일 유효 (Day). 정규장 종료까지 미체결분은 자동 취소됩니다.
        * - `CLS`: 장 마감 주문 (At the Close). 현재 미국 주식 + `orderType=LIMIT` 조합만 지원합니다.
+       * - `OPG`: 장 개시 주문 (At the Opening, 국내 시가단일가). 현재 국내 주식 전용이며 `orderType` 은 `LIMIT`/`MARKET` 모두 지원합니다. 세션 시간(장전 사전접수) 외 접수는 원장에서 거절될 수 있습니다.
        *
        */
-      timeInForce?: 'DAY' | 'CLS';
+      timeInForce?: 'DAY' | 'CLS' | 'OPG';
       /**
        * 주문 수량 (주 단위). 지정한 수량만큼 주문합니다.
        * - 기본: 양의 정수만 가능합니다.
        * - 소수점 수량: 미국 주식 시장가 매도(`orderType=MARKET` + `side=SELL`) 주문에만 허용됩니다.
        * 그 외(매수/지정가/국내) 소수점 수량은 `400 invalid-request` 를 반환합니다.
        * 소수점 매수는 `orderAmount` 를 사용하세요.
-       * 소수점 수량 매도는 정규장 시간에만 접수 가능하며, 정규장 외 요청 시 `422 fractional-quantity-outside-regular-hours` 를 반환합니다.
+       * 소수점 수량 매도는 정규장 시작부터 정규장 종료 1시간 전까지만 접수 가능하며, 그 외 시간 요청 시 `422 fractional-quantity-outside-regular-hours` 를 반환합니다.
        * 소수점 수량은 소수점 6자리까지 지원하며, 초과 시 `400 invalid-request` (`fractional-quantity-scale-exceeded`) 를 반환합니다.
        *
        */
@@ -1074,9 +1439,8 @@ export type OrderCreateRequest =
        * 주문 가격. `orderType`이 `LIMIT` 일 때만 사용합니다.
        * - `LIMIT`: 필수. 미전달 시 `400 invalid-request`.
        * - `MARKET`: 전달 불가. 전달 시 `400 invalid-request`.
-       * KR: 정수 (원 단위). 호가 단위에 맞아야 합니다 (예: 50,000~200,000원 구간은 100원 단위).
-       * KR 은 호가 단위에 맞지 않으면 `400 invalid-request` 에러와 함께 올바른 호가 단위가 `data`에 포함됩니다.
-       * US: 소수점 (달러 단위).
+       * - KR: 정수 (원 단위). 호가 단위에 맞아야 합니다 (예: 50,000~200,000원 구간은 100원 단위). 맞지 않으면 `400 invalid-request` 에러와 함께 올바른 호가 단위가 `data`에 포함됩니다.
+       * - US: 소수점 (달러 단위).
        * - $1 미만: 소수점 넷째 자리까지 (그 이하 자릿수는 절삭).
        * - $1 이상: 소수점 둘째 자리까지 (그 이하 자릿수는 절삭).
        *
@@ -1120,8 +1484,8 @@ export type OrderCreateRequest =
        * Quantity-based 와의 차이: quantity 는 수량을 확정하고 비용이 변동하며,
        * orderAmount 는 금액을 확정하고 수량이 변동합니다.
        *
-       * 정규장 시간에만 접수 가능합니다.
-       * 정규장 시간 외 요청 시 `422 amount-order-outside-regular-hours` 에러를 반환합니다.
+       * 정규장 시작부터 정규장 종료 1시간 전까지만 접수 가능합니다.
+       * 그 외 시간 요청 시 `422 amount-order-outside-regular-hours` 에러를 반환합니다.
        *
        */
       orderAmount: string;
@@ -1153,8 +1517,8 @@ export type OrderModifyRequest = {
    * 변경할 가격. `orderType`이 `LIMIT` 일 때만 사용합니다.
    * - `LIMIT`: 필수. 미전달 시 `400 invalid-request`.
    * - `MARKET`: 전달 불가. 전달 시 `400 invalid-request`.
-   * KR: 정수 (원 단위). 호가 단위에 맞아야 합니다. 맞지 않으면 `400 invalid-request` 에러.
-   * US: 소수점 (달러 단위).
+   * - KR: 정수 (원 단위). 호가 단위에 맞아야 합니다. 맞지 않으면 `400 invalid-request` 에러.
+   * - US: 소수점 (달러 단위).
    * - $1 미만: 소수점 넷째 자리까지 (그 이하 자릿수는 절삭).
    * - $1 이상: 소수점 둘째 자리까지 (그 이하 자릿수는 절삭).
    *
@@ -1282,6 +1646,7 @@ export type ConditionalOrderModifyRequest = {
  * 감시 조건 (leg). 가격이 `triggerPrice` 에 닿으면 `orderSide`(매수/매도) 주문을 냅니다.
  * 수량(`quantity`)·호가유형(`orderType`)은 그룹 공통이라 상위 요청에 있습니다.
  * 호가유형이 `LIMIT` 이면 `orderPrice` 가 필수이고, `MARKET` 이면 `orderPrice` 를 보내면 안 됩니다.
+ * `orderPrice` 는 호가 단위에 맞아야 하며, 맞지 않으면 `400 invalid-request` 에러와 함께 올바른 호가 단위가 `data`에 포함됩니다.
  *
  */
 export type ConditionRequest = {
@@ -1295,6 +1660,11 @@ export type ConditionRequest = {
   triggerPrice: string;
   /**
    * [orderType=LIMIT] 주문 가격(지정가). 트리거 시 이 가격의 지정가 주문을 생성합니다. MARKET 이면 보내지 않습니다.
+   * - KR: 정수 (원 단위). 호가 단위에 맞아야 합니다 (예: 50,000~200,000원 구간은 100원 단위).
+   * - US: 소수점 (달러 단위). 호가 단위에 맞아야 합니다 ($1 미만은 0.0001, $1 이상은 0.01 단위).
+   *
+   * 호가 단위에 맞지 않으면 `400 invalid-request` 에러와 함께 올바른 호가 단위가 `data`에 포함됩니다.
+   *
    */
   orderPrice?: string;
 };
@@ -1481,7 +1851,7 @@ export type Order = {
    * 주문 유효 조건 (Time In Force). `orderType` 과 결합되어 주문 방식이 결정됩니다 (예: `LIMIT` + `CLS` = LOC).
    * - `DAY`: 당일 유효 (Day)
    * - `CLS`: 장 마감 주문 (At the Close)
-   * - `OPG`: 장 개시 주문 (At the Opening). 현재는 지원하지 않습니다.
+   * - `OPG`: 장 개시 주문 (At the Opening, 국내 시가단일가)
    *
    * 클라이언트는 unknown code 를 허용하도록 구현해야 합니다.
    *
@@ -1521,7 +1891,7 @@ export type OrderExecution = {
    */
   filledQuantity: string;
   /**
-   * 평균 체결 가격 (native currency). 부분 체결 시 체결된 건의 평균
+   * 평균 체결 가격 (native currency). 부분 체결 시 체결된 건의 평균, 미체결 시 null
    */
   averageFilledPrice: string | null;
   /**
@@ -1597,7 +1967,7 @@ export type SellableQuantityResponse = {
 export type Commission = {
   marketCountry: MarketCountry;
   /**
-   * 수수료율 (%). 예: 0.015는 0.015%
+   * 매매 수수료율 (소수 비율). 예: `0.00015` = 0.015%
    */
   commissionRate: string;
   /**
@@ -1647,6 +2017,11 @@ export type AccountSeq = number;
  *
  */
 export type OrderId = string;
+
+/**
+ * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).
+ */
+export type KrSymbol = string;
 
 export type IssueOAuth2TokenData = {
   body: OAuth2TokenRequest;
@@ -1954,7 +2329,7 @@ export type GetStocksErrors = {
    */
   429: ErrorResponse;
   /**
-   * 종목 심볼 조회 중 일시적 오류
+   * 종목 정보 조회 중 일시적 오류
    */
   500: ErrorResponse;
 };
@@ -1971,6 +2346,76 @@ export type GetStocksResponses = {
 };
 
 export type GetStocksResponse = GetStocksResponses[keyof GetStocksResponses];
+
+export type ListStocksData = {
+  body?: never;
+  path?: never;
+  query: {
+    /**
+     * 조회할 마켓(거래소)
+     */
+    market: 'KOSPI' | 'KOSDAQ' | 'NYSE' | 'NASDAQ' | 'AMEX' | 'KR_ETC' | 'US_ETC';
+    /**
+     * 종목 상태 필터 (미지정 시 ACTIVE)
+     */
+    status?: 'SCHEDULED' | 'ACTIVE' | 'DELISTED';
+    /**
+     * 종목 유형 필터 (미지정 시 전체 유형)
+     */
+    securityType?:
+      | 'STOCK'
+      | 'FOREIGN_STOCK'
+      | 'DEPOSITARY_RECEIPT'
+      | 'INFRASTRUCTURE_FUND'
+      | 'REIT'
+      | 'ETF'
+      | 'FOREIGN_ETF'
+      | 'ETN'
+      | 'STOCK_WARRANTS';
+    /**
+     * 보통주 여부 필터 (true=보통주만, false=우선주만, 미지정 시 전체)
+     */
+    commonShare?: boolean;
+  };
+  url: '/api/v1/stocks/all';
+};
+
+export type ListStocksErrors = {
+  /**
+   * 잘못된 요청
+   */
+  400: ErrorResponse;
+  /**
+   * 인증 실패. `WWW-Authenticate: Bearer ...` 헤더가 함께 내려갑니다.
+   *
+   */
+  401: ErrorResponse;
+  /**
+   * 권한 부족
+   */
+  403: ErrorResponse;
+  /**
+   * 요청 한도 초과. 포함 헤더의 의미는 아래 `headers` 정의를 참조합니다.
+   */
+  429: ErrorResponse;
+  /**
+   * 종목 정보 조회 중 일시적 오류
+   */
+  500: ErrorResponse;
+};
+
+export type ListStocksError = ListStocksErrors[keyof ListStocksErrors];
+
+export type ListStocksResponses = {
+  /**
+   * 성공
+   */
+  200: ApiResponse & {
+    result?: Array<ListedStock>;
+  };
+};
+
+export type ListStocksResponse = ListStocksResponses[keyof ListStocksResponses];
 
 export type GetStockWarningsData = {
   body?: never;
@@ -2003,7 +2448,7 @@ export type GetStockWarningsErrors = {
    */
   429: ErrorResponse;
   /**
-   * 종목 심볼 조회 중 일시적 오류
+   * 종목 정보 조회 중 일시적 오류
    */
   500: ErrorResponse;
 };
@@ -2020,6 +2465,336 @@ export type GetStockWarningsResponses = {
 };
 
 export type GetStockWarningsResponse = GetStockWarningsResponses[keyof GetStockWarningsResponses];
+
+export type GetStockInvestorTradingData = {
+  body?: never;
+  path: {
+    /**
+     * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).
+     */
+    symbol: string;
+  };
+  query?: {
+    /**
+     * 조회 수 (최대 100)
+     */
+    count?: number;
+    /**
+     * 조회 기준일 (inclusive, `YYYY-MM-DD`). 이 날짜까지의 데이터를 최신순으로 `count` 개 반환합니다.
+     * 미지정 시 가장 최신 데이터부터 반환. 다음 페이지 요청 시 이전 응답의 `nextUntil` 값을 그대로 전달합니다.
+     *
+     */
+    until?: string;
+  };
+  url: '/api/v1/stocks/{symbol}/investor-trading';
+};
+
+export type GetStockInvestorTradingErrors = {
+  /**
+   * 잘못된 요청
+   */
+  400: ErrorResponse;
+  /**
+   * 인증 실패. `WWW-Authenticate: Bearer ...` 헤더가 함께 내려갑니다.
+   *
+   */
+  401: ErrorResponse;
+  /**
+   * 권한 부족
+   */
+  403: ErrorResponse;
+  /**
+   * 종목을 찾을 수 없음
+   */
+  404: ErrorResponse;
+  /**
+   * 요청 한도 초과. 포함 헤더의 의미는 아래 `headers` 정의를 참조합니다.
+   */
+  429: ErrorResponse;
+  /**
+   * 수급·투자자 동향 조회 중 일시적 오류
+   */
+  500: ErrorResponse;
+};
+
+export type GetStockInvestorTradingError =
+  GetStockInvestorTradingErrors[keyof GetStockInvestorTradingErrors];
+
+export type GetStockInvestorTradingResponses = {
+  /**
+   * 성공
+   */
+  200: ApiResponse & {
+    result?: StockInvestorTradingResponse;
+  };
+};
+
+export type GetStockInvestorTradingResponse =
+  GetStockInvestorTradingResponses[keyof GetStockInvestorTradingResponses];
+
+export type GetStockProgramTradesData = {
+  body?: never;
+  path: {
+    /**
+     * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).
+     */
+    symbol: string;
+  };
+  query?: {
+    /**
+     * 조회 수 (최대 100)
+     */
+    count?: number;
+    /**
+     * 조회 기준일 (inclusive, `YYYY-MM-DD`). 이 날짜까지의 데이터를 최신순으로 `count` 개 반환합니다.
+     * 미지정 시 가장 최신 데이터부터 반환. 다음 페이지 요청 시 이전 응답의 `nextUntil` 값을 그대로 전달합니다.
+     *
+     */
+    until?: string;
+  };
+  url: '/api/v1/stocks/{symbol}/program-trades';
+};
+
+export type GetStockProgramTradesErrors = {
+  /**
+   * 잘못된 요청
+   */
+  400: ErrorResponse;
+  /**
+   * 인증 실패. `WWW-Authenticate: Bearer ...` 헤더가 함께 내려갑니다.
+   *
+   */
+  401: ErrorResponse;
+  /**
+   * 권한 부족
+   */
+  403: ErrorResponse;
+  /**
+   * 종목을 찾을 수 없음
+   */
+  404: ErrorResponse;
+  /**
+   * 요청 한도 초과. 포함 헤더의 의미는 아래 `headers` 정의를 참조합니다.
+   */
+  429: ErrorResponse;
+  /**
+   * 수급·투자자 동향 조회 중 일시적 오류
+   */
+  500: ErrorResponse;
+};
+
+export type GetStockProgramTradesError =
+  GetStockProgramTradesErrors[keyof GetStockProgramTradesErrors];
+
+export type GetStockProgramTradesResponses = {
+  /**
+   * 성공
+   */
+  200: ApiResponse & {
+    result?: ProgramTradesResponse;
+  };
+};
+
+export type GetStockProgramTradesResponse =
+  GetStockProgramTradesResponses[keyof GetStockProgramTradesResponses];
+
+export type GetStockShortSellingData = {
+  body?: never;
+  path: {
+    /**
+     * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).
+     */
+    symbol: string;
+  };
+  query?: {
+    /**
+     * 조회 수 (최대 100)
+     */
+    count?: number;
+    /**
+     * 조회 기준일 (inclusive, `YYYY-MM-DD`). 이 날짜까지의 데이터를 최신순으로 `count` 개 반환합니다.
+     * 미지정 시 가장 최신 데이터부터 반환. 다음 페이지 요청 시 이전 응답의 `nextUntil` 값을 그대로 전달합니다.
+     *
+     */
+    until?: string;
+  };
+  url: '/api/v1/stocks/{symbol}/short-selling';
+};
+
+export type GetStockShortSellingErrors = {
+  /**
+   * 잘못된 요청
+   */
+  400: ErrorResponse;
+  /**
+   * 인증 실패. `WWW-Authenticate: Bearer ...` 헤더가 함께 내려갑니다.
+   *
+   */
+  401: ErrorResponse;
+  /**
+   * 권한 부족
+   */
+  403: ErrorResponse;
+  /**
+   * 종목을 찾을 수 없음
+   */
+  404: ErrorResponse;
+  /**
+   * 요청 한도 초과. 포함 헤더의 의미는 아래 `headers` 정의를 참조합니다.
+   */
+  429: ErrorResponse;
+  /**
+   * 수급·투자자 동향 조회 중 일시적 오류
+   */
+  500: ErrorResponse;
+};
+
+export type GetStockShortSellingError =
+  GetStockShortSellingErrors[keyof GetStockShortSellingErrors];
+
+export type GetStockShortSellingResponses = {
+  /**
+   * 성공
+   */
+  200: ApiResponse & {
+    result?: ShortSellingResponse;
+  };
+};
+
+export type GetStockShortSellingResponse =
+  GetStockShortSellingResponses[keyof GetStockShortSellingResponses];
+
+export type GetStockCreditTradesData = {
+  body?: never;
+  path: {
+    /**
+     * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).
+     */
+    symbol: string;
+  };
+  query?: {
+    /**
+     * 조회 수 (최대 100)
+     */
+    count?: number;
+    /**
+     * 조회 기준일 (inclusive, `YYYY-MM-DD`). 이 날짜까지의 데이터를 최신순으로 `count` 개 반환합니다.
+     * 미지정 시 가장 최신 데이터부터 반환. 다음 페이지 요청 시 이전 응답의 `nextUntil` 값을 그대로 전달합니다.
+     *
+     */
+    until?: string;
+  };
+  url: '/api/v1/stocks/{symbol}/credit-trades';
+};
+
+export type GetStockCreditTradesErrors = {
+  /**
+   * 잘못된 요청
+   */
+  400: ErrorResponse;
+  /**
+   * 인증 실패. `WWW-Authenticate: Bearer ...` 헤더가 함께 내려갑니다.
+   *
+   */
+  401: ErrorResponse;
+  /**
+   * 권한 부족
+   */
+  403: ErrorResponse;
+  /**
+   * 종목을 찾을 수 없음
+   */
+  404: ErrorResponse;
+  /**
+   * 요청 한도 초과. 포함 헤더의 의미는 아래 `headers` 정의를 참조합니다.
+   */
+  429: ErrorResponse;
+  /**
+   * 수급·투자자 동향 조회 중 일시적 오류
+   */
+  500: ErrorResponse;
+};
+
+export type GetStockCreditTradesError =
+  GetStockCreditTradesErrors[keyof GetStockCreditTradesErrors];
+
+export type GetStockCreditTradesResponses = {
+  /**
+   * 성공
+   */
+  200: ApiResponse & {
+    result?: CreditTradesResponse;
+  };
+};
+
+export type GetStockCreditTradesResponse =
+  GetStockCreditTradesResponses[keyof GetStockCreditTradesResponses];
+
+export type GetStockSecuritiesLendingData = {
+  body?: never;
+  path: {
+    /**
+     * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).
+     */
+    symbol: string;
+  };
+  query?: {
+    /**
+     * 조회 수 (최대 100)
+     */
+    count?: number;
+    /**
+     * 조회 기준일 (inclusive, `YYYY-MM-DD`). 이 날짜까지의 데이터를 최신순으로 `count` 개 반환합니다.
+     * 미지정 시 가장 최신 데이터부터 반환. 다음 페이지 요청 시 이전 응답의 `nextUntil` 값을 그대로 전달합니다.
+     *
+     */
+    until?: string;
+  };
+  url: '/api/v1/stocks/{symbol}/securities-lending';
+};
+
+export type GetStockSecuritiesLendingErrors = {
+  /**
+   * 잘못된 요청
+   */
+  400: ErrorResponse;
+  /**
+   * 인증 실패. `WWW-Authenticate: Bearer ...` 헤더가 함께 내려갑니다.
+   *
+   */
+  401: ErrorResponse;
+  /**
+   * 권한 부족
+   */
+  403: ErrorResponse;
+  /**
+   * 종목을 찾을 수 없음
+   */
+  404: ErrorResponse;
+  /**
+   * 요청 한도 초과. 포함 헤더의 의미는 아래 `headers` 정의를 참조합니다.
+   */
+  429: ErrorResponse;
+  /**
+   * 수급·투자자 동향 조회 중 일시적 오류
+   */
+  500: ErrorResponse;
+};
+
+export type GetStockSecuritiesLendingError =
+  GetStockSecuritiesLendingErrors[keyof GetStockSecuritiesLendingErrors];
+
+export type GetStockSecuritiesLendingResponses = {
+  /**
+   * 성공
+   */
+  200: ApiResponse & {
+    result?: SecuritiesLendingResponse;
+  };
+};
+
+export type GetStockSecuritiesLendingResponse =
+  GetStockSecuritiesLendingResponses[keyof GetStockSecuritiesLendingResponses];
 
 export type GetExchangeRateData = {
   body?: never;

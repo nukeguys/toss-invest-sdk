@@ -21,6 +21,53 @@ async function main(): Promise<void> {
   console.log('현재가');
   console.dir(prices.result, { depth: null });
 
+  const { data: listedStocks } = await client.listStocks({
+    query: { market: 'KOSPI' },
+    throwOnError: true,
+  });
+  console.log(`KOSPI 전체 종목: ${listedStocks.result?.length ?? 0}건, 첫 종목:`);
+  console.dir(listedStocks.result?.[0], { depth: null });
+
+  const { data: investorTrading } = await client.getStockInvestorTrading({
+    path: { symbol: '005930' },
+    query: { count: 2 },
+    throwOnError: true,
+  });
+  console.log('투자자별 매매동향');
+  console.dir(investorTrading.result, { depth: null });
+
+  const { data: programTrades } = await client.getStockProgramTrades({
+    path: { symbol: '005930' },
+    query: { count: 2 },
+    throwOnError: true,
+  });
+  console.log('프로그램매매 동향');
+  console.dir(programTrades.result, { depth: null });
+
+  const { data: shortSelling } = await client.getStockShortSelling({
+    path: { symbol: '005930' },
+    query: { count: 2 },
+    throwOnError: true,
+  });
+  console.log('공매도 동향');
+  console.dir(shortSelling.result, { depth: null });
+
+  const { data: creditTrades } = await client.getStockCreditTrades({
+    path: { symbol: '005930' },
+    query: { count: 2 },
+    throwOnError: true,
+  });
+  console.log('신용거래 동향');
+  console.dir(creditTrades.result, { depth: null });
+
+  const { data: securitiesLending } = await client.getStockSecuritiesLending({
+    path: { symbol: '005930' },
+    query: { count: 2 },
+    throwOnError: true,
+  });
+  console.log('대차거래 동향');
+  console.dir(securitiesLending.result, { depth: null });
+
   const { data: accounts } = await client.getAccounts({ throwOnError: true });
   console.log('계좌');
   console.dir(accounts.result, { depth: null });

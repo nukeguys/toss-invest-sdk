@@ -343,6 +343,248 @@ export const zStockWarning = z.object({
   endDate: z.iso.date().nullish(),
 });
 
+export const zListedStock = z.object({
+  symbol: z.string().register(z.globalRegistry, {
+    description: '종목 심볼.',
+  }),
+  name: z.string().register(z.globalRegistry, {
+    description: '종목명 (한글)',
+  }),
+  securityType: z
+    .enum([
+      'STOCK',
+      'FOREIGN_STOCK',
+      'DEPOSITARY_RECEIPT',
+      'INFRASTRUCTURE_FUND',
+      'REIT',
+      'ETF',
+      'FOREIGN_ETF',
+      'ETN',
+      'STOCK_WARRANTS',
+    ])
+    .register(z.globalRegistry, {
+      description: '종목 유형',
+    }),
+  isCommonShare: z.boolean().register(z.globalRegistry, {
+    description: '보통주 여부',
+  }),
+  isinCode: z.string().register(z.globalRegistry, {
+    description: 'ISIN 코드',
+  }),
+});
+
+export const zInvestorTradingVolume = z.object({
+  buyVolume: z.string().max(30).register(z.globalRegistry, {
+    description: '매수 거래량 (주, 정수)',
+  }),
+  sellVolume: z.string().max(30).register(z.globalRegistry, {
+    description: '매도 거래량 (주, 정수)',
+  }),
+  netBuyVolume: z.string().max(30).register(z.globalRegistry, {
+    description: '순매수 거래량 (주, 정수). 매수 거래량 − 매도 거래량, 음수면 순매도',
+  }),
+});
+
+/**
+ * 기관 세부 7개 분류별 매매 거래량
+ */
+export const zStockInstitutionTradingBreakdown = z
+  .object({
+    financialInvestment: zInvestorTradingVolume,
+    insurance: zInvestorTradingVolume,
+    trust: zInvestorTradingVolume,
+    privateEquityFund: zInvestorTradingVolume,
+    bank: zInvestorTradingVolume,
+    otherFinancialInstitution: zInvestorTradingVolume,
+    pensionFund: zInvestorTradingVolume,
+  })
+  .register(z.globalRegistry, {
+    description: '기관 세부 7개 분류별 매매 거래량',
+  });
+
+export const zStockInstitutionTradingVolume = z.object({
+  buyVolume: z.string().max(30).register(z.globalRegistry, {
+    description: '기관 합계 매수 거래량 (주, 정수). `breakdown` 7개 항목의 `buyVolume` 합과 일치',
+  }),
+  sellVolume: z.string().max(30).register(z.globalRegistry, {
+    description: '기관 합계 매도 거래량 (주, 정수). `breakdown` 7개 항목의 `sellVolume` 합과 일치',
+  }),
+  netBuyVolume: z.string().max(30).register(z.globalRegistry, {
+    description:
+      '기관 합계 순매수 거래량 (주, 정수). 매수 − 매도, 음수면 순매도. `breakdown` 7개 항목의 `netBuyVolume` 합과 일치',
+  }),
+  breakdown: zStockInstitutionTradingBreakdown.nullish(),
+});
+
+export const zForeignerHolding = z.object({
+  holdingQuantity: z.string().max(30).register(z.globalRegistry, {
+    description: '외국인 보유 주식 수 (주, 정수)',
+  }),
+  limitQuantity: z.string().max(30).register(z.globalRegistry, {
+    description: '외국인 보유 한도 주식 수 (주, 정수)',
+  }),
+  holdingRate: z.string().max(30).register(z.globalRegistry, {
+    description:
+      '외국인 보유 비율 (소수 비율). 상장주식수 대비 보유 주식 수. 예: `0.5089` = 50.89%',
+  }),
+});
+
+export const zCfdBalance = z.object({
+  buyBalanceQuantity: z.string().max(30).register(z.globalRegistry, {
+    description: 'CFD 매수 잔고 수량 (주, 정수)',
+  }),
+  buyBalanceRate: z.string().max(30).register(z.globalRegistry, {
+    description:
+      'CFD 매수 잔고 비율 (소수 비율). 상장주식수 대비 매수 잔고 수량. 예: `0.0002` = 0.02%',
+  }),
+  sellBalanceQuantity: z.string().max(30).register(z.globalRegistry, {
+    description: 'CFD 매도 잔고 수량 (주, 정수)',
+  }),
+  sellBalanceRate: z.string().max(30).register(z.globalRegistry, {
+    description:
+      'CFD 매도 잔고 비율 (소수 비율). 상장주식수 대비 매도 잔고 수량. 예: `0.0001` = 0.01%',
+  }),
+});
+
+export const zStockInvestorTradingRecord = z.object({
+  date: z.iso.date().register(z.globalRegistry, {
+    description: '매매 기준일',
+  }),
+  updatedAt: z.iso.datetime({ offset: true }).register(z.globalRegistry, {
+    description:
+      '기록 전체의 마지막 갱신 시각 (투자자별 매매동향과 `foreignerHolding`·`cfd` 반영 포함).\n당일 기록은 장중 잠정치로 계속 갱신되며, `cfd` 반영(T+1)과 외국인 보유 확정 갱신으로\n다음 영업일에도 갱신될 수 있습니다.\n',
+  }),
+  individual: zInvestorTradingVolume.nullish(),
+  foreigner: zInvestorTradingVolume,
+  institution: zStockInstitutionTradingVolume,
+  otherCorporation: zInvestorTradingVolume.nullish(),
+  foreignerHolding: zForeignerHolding.nullish(),
+  cfd: zCfdBalance.nullish(),
+});
+
+export const zStockInvestorTradingResponse = z.object({
+  nextUntil: z.iso.date().nullish(),
+  records: z.array(zStockInvestorTradingRecord).register(z.globalRegistry, {
+    description: '일별 투자자 매매동향 기록 목록 (최신순). 데이터가 없으면 빈 배열',
+  }),
+});
+
+export const zProgramTradingVolume = z.object({
+  buyVolume: z.string().max(30).register(z.globalRegistry, {
+    description: '프로그램 매수 거래량 (주, 정수)',
+  }),
+  sellVolume: z.string().max(30).register(z.globalRegistry, {
+    description: '프로그램 매도 거래량 (주, 정수)',
+  }),
+  netBuyVolume: z.string().max(30).register(z.globalRegistry, {
+    description: '프로그램 순매수 거래량 (주, 정수). 매수 − 매도, 음수면 순매도',
+  }),
+});
+
+export const zProgramTradeRecord = z.object({
+  date: z.iso.date().register(z.globalRegistry, {
+    description: '매매 기준일',
+  }),
+  arbitrage: zProgramTradingVolume,
+  nonArbitrage: zProgramTradingVolume,
+});
+
+export const zProgramTradesResponse = z.object({
+  nextUntil: z.iso.date().nullish(),
+  records: z.array(zProgramTradeRecord).register(z.globalRegistry, {
+    description: '일별 프로그램매매 기록 목록 (최신순). 데이터가 없으면 빈 배열',
+  }),
+});
+
+export const zShortSellingRecord = z.object({
+  date: z.iso.date().register(z.globalRegistry, {
+    description: '매매 기준일',
+  }),
+  updatedAt: z.iso.datetime({ offset: true }).register(z.globalRegistry, {
+    description: '해당 기록의 마지막 갱신 시각',
+  }),
+  shortSellingVolume: z.string().max(30).register(z.globalRegistry, {
+    description: '공매도 거래량 (주, 정수)',
+  }),
+  shortSellingAmount: z.string().max(30).register(z.globalRegistry, {
+    description: '공매도 거래대금 (KRW, 정수)',
+  }),
+  shortSellingVolumeRate: z.string().max(30).nullish(),
+  shortSellingAmountRate: z.string().max(30).nullish(),
+});
+
+export const zShortSellingResponse = z.object({
+  nextUntil: z.iso.date().nullish(),
+  records: z.array(zShortSellingRecord).register(z.globalRegistry, {
+    description: '일별 공매도 기록 목록 (최신순). 데이터가 없으면 빈 배열',
+  }),
+});
+
+export const zCreditTradeDetail = z.object({
+  newQuantity: z.string().max(30).register(z.globalRegistry, {
+    description: '신규 수량 (주, 정수)',
+  }),
+  returnQuantity: z.string().max(30).register(z.globalRegistry, {
+    description: '상환 수량 (주, 정수)',
+  }),
+  balanceQuantity: z.string().max(30).register(z.globalRegistry, {
+    description: '잔고 수량 (주, 정수)',
+  }),
+  balanceRate: z.string().max(30).register(z.globalRegistry, {
+    description: '잔고 비율 (소수 비율). 상장주식수 대비 잔고 수량. 예: `0.0042` = 0.42%',
+  }),
+  tradingRate: z.string().max(30).register(z.globalRegistry, {
+    description:
+      '공여율 (소수 비율). 매매일의 종목 전체 거래량 중 해당 신용거래 유형의 거래량 비율. 예: `0.09` = 9%',
+  }),
+});
+
+export const zCreditTradeRecord = z.object({
+  date: z.iso.date().register(z.globalRegistry, {
+    description: '매매 기준일',
+  }),
+  updatedAt: z.iso.datetime({ offset: true }).register(z.globalRegistry, {
+    description: '해당 기록의 마지막 갱신 시각',
+  }),
+  marginLoan: zCreditTradeDetail.nullish(),
+  stockLoan: zCreditTradeDetail.nullish(),
+});
+
+export const zCreditTradesResponse = z.object({
+  nextUntil: z.iso.date().nullish(),
+  records: z.array(zCreditTradeRecord).register(z.globalRegistry, {
+    description: '일별 신용거래 기록 목록 (최신순). 데이터가 없으면 빈 배열',
+  }),
+});
+
+export const zSecuritiesLendingRecord = z.object({
+  date: z.iso.date().register(z.globalRegistry, {
+    description: '매매 기준일',
+  }),
+  updatedAt: z.iso.datetime({ offset: true }).register(z.globalRegistry, {
+    description: '해당 기록의 마지막 갱신 시각',
+  }),
+  executionQuantity: z.string().max(30).register(z.globalRegistry, {
+    description: '대차 체결 수량 (주, 정수)',
+  }),
+  repaymentQuantity: z.string().max(30).register(z.globalRegistry, {
+    description: '대차 상환 수량 (주, 정수)',
+  }),
+  balanceQuantity: z.string().max(30).register(z.globalRegistry, {
+    description: '대차 잔고 수량 (주, 정수)',
+  }),
+  balanceAmount: z.string().max(30).register(z.globalRegistry, {
+    description: '대차 잔고 금액 (KRW, 정수)',
+  }),
+});
+
+export const zSecuritiesLendingResponse = z.object({
+  nextUntil: z.iso.date().nullish(),
+  records: z.array(zSecuritiesLendingRecord).register(z.globalRegistry, {
+    description: '일별 대차거래 기록 목록 (최신순). 데이터가 없으면 빈 배열',
+  }),
+});
+
 export const zExchangeRateResponse = z.object({
   baseCurrency: zCurrency,
   quoteCurrency: zCurrency,
@@ -883,10 +1125,10 @@ export const zOrderCreateRequest = z.union([
         description: '호가 유형.\n- `LIMIT`: 지정가\n- `MARKET`: 시장가\n',
       }),
       timeInForce: z
-        .enum(['DAY', 'CLS'])
+        .enum(['DAY', 'CLS', 'OPG'])
         .register(z.globalRegistry, {
           description:
-            '주문 유효 조건 (Time In Force). 미전달 시 `DAY`. `orderType` 과 결합되어 주문 방식이 결정됩니다 (예: `LIMIT` + `CLS` = LOC).\n- `DAY`: 당일 유효 (Day). 정규장 종료까지 미체결분은 자동 취소됩니다.\n- `CLS`: 장 마감 주문 (At the Close). 현재 미국 주식 + `orderType=LIMIT` 조합만 지원합니다.\n',
+            '주문 유효 조건 (Time In Force). 미전달 시 `DAY`. `orderType` 과 결합되어 주문 방식이 결정됩니다 (예: `LIMIT` + `CLS` = LOC).\n- `DAY`: 당일 유효 (Day). 정규장 종료까지 미체결분은 자동 취소됩니다.\n- `CLS`: 장 마감 주문 (At the Close). 현재 미국 주식 + `orderType=LIMIT` 조합만 지원합니다.\n- `OPG`: 장 개시 주문 (At the Opening, 국내 시가단일가). 현재 국내 주식 전용이며 `orderType` 은 `LIMIT`/`MARKET` 모두 지원합니다. 세션 시간(장전 사전접수) 외 접수는 원장에서 거절될 수 있습니다.\n',
         })
         .optional()
         .default('DAY'),
@@ -896,7 +1138,7 @@ export const zOrderCreateRequest = z.union([
         .regex(/^\d+(\.\d+)?$/)
         .register(z.globalRegistry, {
           description:
-            '주문 수량 (주 단위). 지정한 수량만큼 주문합니다.\n- 기본: 양의 정수만 가능합니다.\n- 소수점 수량: 미국 주식 시장가 매도(`orderType=MARKET` + `side=SELL`) 주문에만 허용됩니다.\n  그 외(매수/지정가/국내) 소수점 수량은 `400 invalid-request` 를 반환합니다.\n  소수점 매수는 `orderAmount` 를 사용하세요.\n  소수점 수량 매도는 정규장 시간에만 접수 가능하며, 정규장 외 요청 시 `422 fractional-quantity-outside-regular-hours` 를 반환합니다.\n  소수점 수량은 소수점 6자리까지 지원하며, 초과 시 `400 invalid-request` (`fractional-quantity-scale-exceeded`) 를 반환합니다.\n',
+            '주문 수량 (주 단위). 지정한 수량만큼 주문합니다.\n- 기본: 양의 정수만 가능합니다.\n- 소수점 수량: 미국 주식 시장가 매도(`orderType=MARKET` + `side=SELL`) 주문에만 허용됩니다.\n  그 외(매수/지정가/국내) 소수점 수량은 `400 invalid-request` 를 반환합니다.\n  소수점 매수는 `orderAmount` 를 사용하세요.\n  소수점 수량 매도는 정규장 시작부터 정규장 종료 1시간 전까지만 접수 가능하며, 그 외 시간 요청 시 `422 fractional-quantity-outside-regular-hours` 를 반환합니다.\n  소수점 수량은 소수점 6자리까지 지원하며, 초과 시 `400 invalid-request` (`fractional-quantity-scale-exceeded`) 를 반환합니다.\n',
         }),
       price: z
         .string()
@@ -904,7 +1146,7 @@ export const zOrderCreateRequest = z.union([
         .regex(/^\d+(\.\d+)?$/)
         .register(z.globalRegistry, {
           description:
-            '주문 가격. `orderType`이 `LIMIT` 일 때만 사용합니다.\n- `LIMIT`: 필수. 미전달 시 `400 invalid-request`.\n- `MARKET`: 전달 불가. 전달 시 `400 invalid-request`.\nKR: 정수 (원 단위). 호가 단위에 맞아야 합니다 (예: 50,000~200,000원 구간은 100원 단위).\nKR 은 호가 단위에 맞지 않으면 `400 invalid-request` 에러와 함께 올바른 호가 단위가 `data`에 포함됩니다.\nUS: 소수점 (달러 단위).\n  - $1 미만: 소수점 넷째 자리까지 (그 이하 자릿수는 절삭).\n  - $1 이상: 소수점 둘째 자리까지 (그 이하 자릿수는 절삭).\n',
+            '주문 가격. `orderType`이 `LIMIT` 일 때만 사용합니다.\n- `LIMIT`: 필수. 미전달 시 `400 invalid-request`.\n- `MARKET`: 전달 불가. 전달 시 `400 invalid-request`.\n- KR: 정수 (원 단위). 호가 단위에 맞아야 합니다 (예: 50,000~200,000원 구간은 100원 단위). 맞지 않으면 `400 invalid-request` 에러와 함께 올바른 호가 단위가 `data`에 포함됩니다.\n- US: 소수점 (달러 단위).\n  - $1 미만: 소수점 넷째 자리까지 (그 이하 자릿수는 절삭).\n  - $1 이상: 소수점 둘째 자리까지 (그 이하 자릿수는 절삭).\n',
         })
         .optional(),
       confirmHighValueOrder: z
@@ -945,7 +1187,7 @@ export const zOrderCreateRequest = z.union([
         .regex(/^\d+(\.\d+)?$/)
         .register(z.globalRegistry, {
           description:
-            '주문 금액 (달러). 지정한 금액만큼 주문합니다.\n체결 수량은 체결 시점의 시장가에 따라 결정됩니다.\n\nQuantity-based 와의 차이: quantity 는 수량을 확정하고 비용이 변동하며,\norderAmount 는 금액을 확정하고 수량이 변동합니다.\n\n정규장 시간에만 접수 가능합니다.\n정규장 시간 외 요청 시 `422 amount-order-outside-regular-hours` 에러를 반환합니다.\n',
+            '주문 금액 (달러). 지정한 금액만큼 주문합니다.\n체결 수량은 체결 시점의 시장가에 따라 결정됩니다.\n\nQuantity-based 와의 차이: quantity 는 수량을 확정하고 비용이 변동하며,\norderAmount 는 금액을 확정하고 수량이 변동합니다.\n\n정규장 시작부터 정규장 종료 1시간 전까지만 접수 가능합니다.\n그 외 시간 요청 시 `422 amount-order-outside-regular-hours` 에러를 반환합니다.\n',
         }),
       confirmHighValueOrder: z
         .boolean()
@@ -980,7 +1222,7 @@ export const zOrderModifyRequest = z.object({
     .regex(/^\d+(\.\d+)?$/)
     .register(z.globalRegistry, {
       description:
-        '변경할 가격. `orderType`이 `LIMIT` 일 때만 사용합니다.\n- `LIMIT`: 필수. 미전달 시 `400 invalid-request`.\n- `MARKET`: 전달 불가. 전달 시 `400 invalid-request`.\nKR: 정수 (원 단위). 호가 단위에 맞아야 합니다. 맞지 않으면 `400 invalid-request` 에러.\nUS: 소수점 (달러 단위).\n  - $1 미만: 소수점 넷째 자리까지 (그 이하 자릿수는 절삭).\n  - $1 이상: 소수점 둘째 자리까지 (그 이하 자릿수는 절삭).\n',
+        '변경할 가격. `orderType`이 `LIMIT` 일 때만 사용합니다.\n- `LIMIT`: 필수. 미전달 시 `400 invalid-request`.\n- `MARKET`: 전달 불가. 전달 시 `400 invalid-request`.\n- KR: 정수 (원 단위). 호가 단위에 맞아야 합니다. 맞지 않으면 `400 invalid-request` 에러.\n- US: 소수점 (달러 단위).\n  - $1 미만: 소수점 넷째 자리까지 (그 이하 자릿수는 절삭).\n  - $1 이상: 소수점 둘째 자리까지 (그 이하 자릿수는 절삭).\n',
     })
     .optional(),
   confirmHighValueOrder: z
@@ -1010,6 +1252,7 @@ export const zOrderOperationResponse = z.object({
  * 감시 조건 (leg). 가격이 `triggerPrice` 에 닿으면 `orderSide`(매수/매도) 주문을 냅니다.
  * 수량(`quantity`)·호가유형(`orderType`)은 그룹 공통이라 상위 요청에 있습니다.
  * 호가유형이 `LIMIT` 이면 `orderPrice` 가 필수이고, `MARKET` 이면 `orderPrice` 를 보내면 안 됩니다.
+ * `orderPrice` 는 호가 단위에 맞아야 하며, 맞지 않으면 `400 invalid-request` 에러와 함께 올바른 호가 단위가 `data`에 포함됩니다.
  *
  */
 export const zConditionRequest = z
@@ -1030,13 +1273,13 @@ export const zConditionRequest = z
       .regex(/^\d+(\.\d+)?$/)
       .register(z.globalRegistry, {
         description:
-          '[orderType=LIMIT] 주문 가격(지정가). 트리거 시 이 가격의 지정가 주문을 생성합니다. MARKET 이면 보내지 않습니다.',
+          '[orderType=LIMIT] 주문 가격(지정가). 트리거 시 이 가격의 지정가 주문을 생성합니다. MARKET 이면 보내지 않습니다.\n- KR: 정수 (원 단위). 호가 단위에 맞아야 합니다 (예: 50,000~200,000원 구간은 100원 단위).\n- US: 소수점 (달러 단위). 호가 단위에 맞아야 합니다 ($1 미만은 0.0001, $1 이상은 0.01 단위).\n\n호가 단위에 맞지 않으면 `400 invalid-request` 에러와 함께 올바른 호가 단위가 `data`에 포함됩니다.\n',
       })
       .optional(),
   })
   .register(z.globalRegistry, {
     description:
-      '감시 조건 (leg). 가격이 `triggerPrice` 에 닿으면 `orderSide`(매수/매도) 주문을 냅니다.\n수량(`quantity`)·호가유형(`orderType`)은 그룹 공통이라 상위 요청에 있습니다.\n호가유형이 `LIMIT` 이면 `orderPrice` 가 필수이고, `MARKET` 이면 `orderPrice` 를 보내면 안 됩니다.\n',
+      '감시 조건 (leg). 가격이 `triggerPrice` 에 닿으면 `orderSide`(매수/매도) 주문을 냅니다.\n수량(`quantity`)·호가유형(`orderType`)은 그룹 공통이라 상위 요청에 있습니다.\n호가유형이 `LIMIT` 이면 `orderPrice` 가 필수이고, `MARKET` 이면 `orderPrice` 를 보내면 안 됩니다.\n`orderPrice` 는 호가 단위에 맞아야 하며, 맞지 않으면 `400 invalid-request` 에러와 함께 올바른 호가 단위가 `data`에 포함됩니다.\n',
   });
 
 /**
@@ -1293,7 +1536,7 @@ export const zOrder = z.object({
   }),
   timeInForce: z.enum(['DAY', 'CLS', 'OPG']).register(z.globalRegistry, {
     description:
-      '주문 유효 조건 (Time In Force). `orderType` 과 결합되어 주문 방식이 결정됩니다 (예: `LIMIT` + `CLS` = LOC).\n- `DAY`: 당일 유효 (Day)\n- `CLS`: 장 마감 주문 (At the Close)\n- `OPG`: 장 개시 주문 (At the Opening). 현재는 지원하지 않습니다.\n\n클라이언트는 unknown code 를 허용하도록 구현해야 합니다.\n',
+      '주문 유효 조건 (Time In Force). `orderType` 과 결합되어 주문 방식이 결정됩니다 (예: `LIMIT` + `CLS` = LOC).\n- `DAY`: 당일 유효 (Day)\n- `CLS`: 장 마감 주문 (At the Close)\n- `OPG`: 장 개시 주문 (At the Opening, 국내 시가단일가)\n\n클라이언트는 unknown code 를 허용하도록 구현해야 합니다.\n',
   }),
   status: zOrderStatus,
   price: z.string().max(30).nullish(),
@@ -1347,7 +1590,7 @@ export const zSellableQuantityResponse = z.object({
 export const zCommission = z.object({
   marketCountry: zMarketCountry,
   commissionRate: z.string().max(30).register(z.globalRegistry, {
-    description: '수수료율 (%). 예: 0.015는 0.015%',
+    description: '매매 수수료율 (소수 비율). 예: `0.00015` = 0.015%',
   }),
   startDate: z.iso.date().nullish(),
   endDate: z.iso.date().nullish(),
@@ -1415,6 +1658,16 @@ export const zAccountSeq = z.coerce
 export const zOrderId = z.string().register(z.globalRegistry, {
   description: '주문 식별자.\n서버에서 발급한 opaque token 입니다.\n',
 });
+
+/**
+ * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).
+ */
+export const zKrSymbol = z
+  .string()
+  .regex(/^[A-Za-z0-9.\-]+$/)
+  .register(z.globalRegistry, {
+    description: '국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).',
+  });
 
 export const zIssueOAuth2TokenBody = zOAuth2TokenRequest;
 
@@ -1513,6 +1766,43 @@ export const zGetStocksQuery = z.object({
     }),
 });
 
+export const zListStocksQuery = z.object({
+  market: z
+    .enum(['KOSPI', 'KOSDAQ', 'NYSE', 'NASDAQ', 'AMEX', 'KR_ETC', 'US_ETC'])
+    .register(z.globalRegistry, {
+      description: '조회할 마켓(거래소)',
+    }),
+  status: z
+    .enum(['SCHEDULED', 'ACTIVE', 'DELISTED'])
+    .register(z.globalRegistry, {
+      description: '종목 상태 필터 (미지정 시 ACTIVE)',
+    })
+    .optional()
+    .default('ACTIVE'),
+  securityType: z
+    .enum([
+      'STOCK',
+      'FOREIGN_STOCK',
+      'DEPOSITARY_RECEIPT',
+      'INFRASTRUCTURE_FUND',
+      'REIT',
+      'ETF',
+      'FOREIGN_ETF',
+      'ETN',
+      'STOCK_WARRANTS',
+    ])
+    .register(z.globalRegistry, {
+      description: '종목 유형 필터 (미지정 시 전체 유형)',
+    })
+    .optional(),
+  commonShare: z
+    .boolean()
+    .register(z.globalRegistry, {
+      description: '보통주 여부 필터 (true=보통주만, false=우선주만, 미지정 시 전체)',
+    })
+    .optional(),
+});
+
 export const zGetStockWarningsPath = z.object({
   symbol: z
     .string()
@@ -1521,6 +1811,146 @@ export const zGetStockWarningsPath = z.object({
       description:
         "종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.",
     }),
+});
+
+export const zGetStockInvestorTradingPath = z.object({
+  symbol: z
+    .string()
+    .regex(/^[A-Za-z0-9.\-]+$/)
+    .register(z.globalRegistry, {
+      description: '국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).',
+    }),
+});
+
+export const zGetStockInvestorTradingQuery = z.object({
+  count: z
+    .int()
+    .gte(1)
+    .lte(100)
+    .register(z.globalRegistry, {
+      description: '조회 수 (최대 100)',
+    })
+    .optional()
+    .default(10),
+  until: z.iso
+    .date()
+    .register(z.globalRegistry, {
+      description:
+        '조회 기준일 (inclusive, `YYYY-MM-DD`). 이 날짜까지의 데이터를 최신순으로 `count` 개 반환합니다.\n미지정 시 가장 최신 데이터부터 반환. 다음 페이지 요청 시 이전 응답의 `nextUntil` 값을 그대로 전달합니다.\n',
+    })
+    .optional(),
+});
+
+export const zGetStockProgramTradesPath = z.object({
+  symbol: z
+    .string()
+    .regex(/^[A-Za-z0-9.\-]+$/)
+    .register(z.globalRegistry, {
+      description: '국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).',
+    }),
+});
+
+export const zGetStockProgramTradesQuery = z.object({
+  count: z
+    .int()
+    .gte(1)
+    .lte(100)
+    .register(z.globalRegistry, {
+      description: '조회 수 (최대 100)',
+    })
+    .optional()
+    .default(10),
+  until: z.iso
+    .date()
+    .register(z.globalRegistry, {
+      description:
+        '조회 기준일 (inclusive, `YYYY-MM-DD`). 이 날짜까지의 데이터를 최신순으로 `count` 개 반환합니다.\n미지정 시 가장 최신 데이터부터 반환. 다음 페이지 요청 시 이전 응답의 `nextUntil` 값을 그대로 전달합니다.\n',
+    })
+    .optional(),
+});
+
+export const zGetStockShortSellingPath = z.object({
+  symbol: z
+    .string()
+    .regex(/^[A-Za-z0-9.\-]+$/)
+    .register(z.globalRegistry, {
+      description: '국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).',
+    }),
+});
+
+export const zGetStockShortSellingQuery = z.object({
+  count: z
+    .int()
+    .gte(1)
+    .lte(100)
+    .register(z.globalRegistry, {
+      description: '조회 수 (최대 100)',
+    })
+    .optional()
+    .default(10),
+  until: z.iso
+    .date()
+    .register(z.globalRegistry, {
+      description:
+        '조회 기준일 (inclusive, `YYYY-MM-DD`). 이 날짜까지의 데이터를 최신순으로 `count` 개 반환합니다.\n미지정 시 가장 최신 데이터부터 반환. 다음 페이지 요청 시 이전 응답의 `nextUntil` 값을 그대로 전달합니다.\n',
+    })
+    .optional(),
+});
+
+export const zGetStockCreditTradesPath = z.object({
+  symbol: z
+    .string()
+    .regex(/^[A-Za-z0-9.\-]+$/)
+    .register(z.globalRegistry, {
+      description: '국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).',
+    }),
+});
+
+export const zGetStockCreditTradesQuery = z.object({
+  count: z
+    .int()
+    .gte(1)
+    .lte(100)
+    .register(z.globalRegistry, {
+      description: '조회 수 (최대 100)',
+    })
+    .optional()
+    .default(10),
+  until: z.iso
+    .date()
+    .register(z.globalRegistry, {
+      description:
+        '조회 기준일 (inclusive, `YYYY-MM-DD`). 이 날짜까지의 데이터를 최신순으로 `count` 개 반환합니다.\n미지정 시 가장 최신 데이터부터 반환. 다음 페이지 요청 시 이전 응답의 `nextUntil` 값을 그대로 전달합니다.\n',
+    })
+    .optional(),
+});
+
+export const zGetStockSecuritiesLendingPath = z.object({
+  symbol: z
+    .string()
+    .regex(/^[A-Za-z0-9.\-]+$/)
+    .register(z.globalRegistry, {
+      description: '국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).',
+    }),
+});
+
+export const zGetStockSecuritiesLendingQuery = z.object({
+  count: z
+    .int()
+    .gte(1)
+    .lte(100)
+    .register(z.globalRegistry, {
+      description: '조회 수 (최대 100)',
+    })
+    .optional()
+    .default(10),
+  until: z.iso
+    .date()
+    .register(z.globalRegistry, {
+      description:
+        '조회 기준일 (inclusive, `YYYY-MM-DD`). 이 날짜까지의 데이터를 최신순으로 `count` 개 반환합니다.\n미지정 시 가장 최신 데이터부터 반환. 다음 페이지 요청 시 이전 응답의 `nextUntil` 값을 그대로 전달합니다.\n',
+    })
+    .optional(),
 });
 
 export const zGetExchangeRateQuery = z.object({

@@ -20,7 +20,13 @@ TOSS_CLIENT_ID=... TOSS_CLIENT_SECRET=... npx -y @wi9ine/toss-invest-mcp
 - `toss_get_orderbook`: bid and ask quotes for one symbol
 - `toss_get_candles`: minute or daily OHLCV candles
 - `toss_get_stocks`: basic information for up to 200 symbols
+- `toss_list_stocks`: full stock universe for one market
 - `toss_get_stock_warnings`: warnings and trading cautions for one symbol
+- `toss_get_stock_investor_trading`: daily investor trading volumes for one Korean stock
+- `toss_get_stock_program_trades`: daily program trading volumes for one Korean stock
+- `toss_get_stock_short_selling`: daily short selling volumes and ratios for one Korean stock
+- `toss_get_stock_credit_trades`: daily margin loan and stock loan balances for one Korean stock
+- `toss_get_stock_securities_lending`: daily securities lending balances for one Korean stock
 - `toss_get_exchange_rate`: KRW/USD reference exchange rate
 - `toss_get_kr_market_calendar`: Korean market schedule
 - `toss_get_us_market_calendar`: US market schedule

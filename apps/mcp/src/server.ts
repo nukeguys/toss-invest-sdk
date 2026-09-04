@@ -25,9 +25,20 @@ import {
   zGetPriceLimitQuery,
   zGetRankingsQuery,
   zGetSellableQuantityQuery,
+  zGetStockCreditTradesPath,
+  zGetStockCreditTradesQuery,
+  zGetStockInvestorTradingPath,
+  zGetStockInvestorTradingQuery,
+  zGetStockProgramTradesPath,
+  zGetStockProgramTradesQuery,
+  zGetStockSecuritiesLendingPath,
+  zGetStockSecuritiesLendingQuery,
+  zGetStockShortSellingPath,
+  zGetStockShortSellingQuery,
   zGetStockWarningsPath,
   zGetTradesQuery,
   zGetUsMarketCalendarQuery,
+  zListStocksQuery,
   zModifyConditionalOrderBody,
   zModifyOrderBody,
 } from '@wi9ine/toss-invest-sdk';
@@ -256,7 +267,7 @@ export function createTossInvestMcpServer(
   }
 
   const server = new McpServer(
-    { name: 'toss-invest', version: '0.1.0' },
+    { name: 'toss-invest', version: '0.2.0' },
     {
       instructions: allowTrading
         ? '토스증권 조회 및 주문 서버입니다. 계좌 API를 호출하기 전에 toss_list_accounts로 accountSeq를 확인하고, 주문 도구는 사용자의 승인을 받은 경우에만 호출하세요.'
@@ -344,6 +355,24 @@ export function createTossInvestMcpServer(
   );
 
   server.registerTool(
+    'toss_list_stocks',
+    {
+      annotations: readOnly,
+      description:
+        '마켓(거래소)별 전체 종목 목록을 조회합니다. 유니버스 구성 용도이며 마켓당 최대 수천 건을 한 번에 반환하므로, 개별 종목 정보는 toss_get_stocks를 사용하세요.',
+      inputSchema: zListStocksQuery,
+      title: '마켓 전체 종목 조회',
+    },
+    ({ commonShare, market, securityType, status }) =>
+      call(() =>
+        client.listStocks({
+          query: { commonShare, market, securityType, status },
+          throwOnError: true,
+        }),
+      ),
+  );
+
+  server.registerTool(
     'toss_get_stock_warnings',
     {
       annotations: readOnly,
@@ -352,6 +381,114 @@ export function createTossInvestMcpServer(
       title: '종목 유의사항 조회',
     },
     ({ symbol }) => call(() => client.getStockWarnings({ path: { symbol }, throwOnError: true })),
+  );
+
+  server.registerTool(
+    'toss_get_stock_investor_trading',
+    {
+      annotations: readOnly,
+      description:
+        '국내 종목의 개인·외국인·기관·기타법인 투자자별 매매 거래량을 일별 시계열로 조회합니다.',
+      inputSchema: z.object({
+        ...zGetStockInvestorTradingPath.shape,
+        ...zGetStockInvestorTradingQuery.shape,
+      }),
+      title: '투자자별 매매동향 조회',
+    },
+    ({ count, symbol, until }) =>
+      call(() =>
+        client.getStockInvestorTrading({
+          path: { symbol },
+          query: { count, until },
+          throwOnError: true,
+        }),
+      ),
+  );
+
+  server.registerTool(
+    'toss_get_stock_program_trades',
+    {
+      annotations: readOnly,
+      description: '국내 종목의 차익·비차익 프로그램매매 거래량을 일별 시계열로 조회합니다.',
+      inputSchema: z.object({
+        ...zGetStockProgramTradesPath.shape,
+        ...zGetStockProgramTradesQuery.shape,
+      }),
+      title: '프로그램매매 동향 조회',
+    },
+    ({ count, symbol, until }) =>
+      call(() =>
+        client.getStockProgramTrades({
+          path: { symbol },
+          query: { count, until },
+          throwOnError: true,
+        }),
+      ),
+  );
+
+  server.registerTool(
+    'toss_get_stock_short_selling',
+    {
+      annotations: readOnly,
+      description:
+        '국내 종목의 공매도 거래량·거래대금과 전체 거래 대비 비중을 일별 시계열로 조회합니다.',
+      inputSchema: z.object({
+        ...zGetStockShortSellingPath.shape,
+        ...zGetStockShortSellingQuery.shape,
+      }),
+      title: '공매도 동향 조회',
+    },
+    ({ count, symbol, until }) =>
+      call(() =>
+        client.getStockShortSelling({
+          path: { symbol },
+          query: { count, until },
+          throwOnError: true,
+        }),
+      ),
+  );
+
+  server.registerTool(
+    'toss_get_stock_credit_trades',
+    {
+      annotations: readOnly,
+      description: '국내 종목의 신용융자·신용대주 신규·상환·잔고 수량을 일별 시계열로 조회합니다.',
+      inputSchema: z.object({
+        ...zGetStockCreditTradesPath.shape,
+        ...zGetStockCreditTradesQuery.shape,
+      }),
+      title: '신용거래 동향 조회',
+    },
+    ({ count, symbol, until }) =>
+      call(() =>
+        client.getStockCreditTrades({
+          path: { symbol },
+          query: { count, until },
+          throwOnError: true,
+        }),
+      ),
+  );
+
+  server.registerTool(
+    'toss_get_stock_securities_lending',
+    {
+      annotations: readOnly,
+      description:
+        '국내 종목의 대차거래 체결·상환·잔고 수량과 잔고 금액을 일별 시계열로 조회합니다.',
+      inputSchema: z.object({
+        ...zGetStockSecuritiesLendingPath.shape,
+        ...zGetStockSecuritiesLendingQuery.shape,
+      }),
+      title: '대차거래 동향 조회',
+    },
+    ({ count, symbol, until }) =>
+      call(() =>
+        client.getStockSecuritiesLending({
+          path: { symbol },
+          query: { count, until },
+          throwOnError: true,
+        }),
+      ),
   );
 
   server.registerTool(

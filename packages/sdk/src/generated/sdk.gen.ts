@@ -79,8 +79,23 @@ import type {
   GetSellableQuantityData,
   GetSellableQuantityErrors,
   GetSellableQuantityResponses,
+  GetStockCreditTradesData,
+  GetStockCreditTradesErrors,
+  GetStockCreditTradesResponses,
+  GetStockInvestorTradingData,
+  GetStockInvestorTradingErrors,
+  GetStockInvestorTradingResponses,
+  GetStockProgramTradesData,
+  GetStockProgramTradesErrors,
+  GetStockProgramTradesResponses,
   GetStocksData,
+  GetStockSecuritiesLendingData,
+  GetStockSecuritiesLendingErrors,
+  GetStockSecuritiesLendingResponses,
   GetStocksErrors,
+  GetStockShortSellingData,
+  GetStockShortSellingErrors,
+  GetStockShortSellingResponses,
   GetStocksResponses,
   GetStockWarningsData,
   GetStockWarningsErrors,
@@ -94,6 +109,9 @@ import type {
   IssueOAuth2TokenData,
   IssueOAuth2TokenErrors,
   IssueOAuth2TokenResponses,
+  ListStocksData,
+  ListStocksErrors,
+  ListStocksResponses,
   ModifyConditionalOrderData,
   ModifyConditionalOrderErrors,
   ModifyConditionalOrderResponses,
@@ -300,6 +318,8 @@ export class TossInvestApi extends HeyApiClient {
    * 종목의 기본 정보를 조회합니다. `symbols` 를 콤마로 구분하여 최대 200건 까지 다건 조회를 지원합니다.
    * 종목명, 시장, 통화, 상장 상태, 거래정지 여부 등 트레이딩에서 필요한 참조 데이터를 제공합니다.
    *
+   * **관련 API**: 마켓 전체 종목 목록(유니버스)이 필요하면 [`GET /api/v1/stocks/all`](#operation/listStocks) 을 사용하세요.
+   *
    * **Rate Limits Group**: `STOCK`
    *
    */
@@ -311,6 +331,33 @@ export class TossInvestApi extends HeyApiClient {
       url: '/api/v1/stocks',
       ...options,
     });
+  }
+
+  /**
+   * 마켓별 전체 종목 조회
+   *
+   * 마켓(거래소)별 종목 리스트를 조회합니다. 종목 유니버스 구성 용도이며, 토스증권에서 거래 가능한 종목만 제공합니다.
+   * `status`·`securityType`·`commonShare` 로 유니버스를 필터링할 수 있습니다.
+   *
+   * **정렬**: `symbol` 오름차순. 필터 조건에 해당하는 종목을 페이지네이션 없이 한 번에 반환합니다.
+   *
+   * **응답 규모**: 마켓당 최대 수천 건(예: NASDAQ 약 2,800건, gzip 응답 약 30KB). 일 배치로 갱신되는 저변동 데이터이므로 하루 1회 조회 후 로컬 캐싱을 권장합니다.
+   *
+   * **관련 API**: 여기서 얻은 `symbol` 로 [`GET /api/v1/stocks`](#operation/getStocks)(다건 상세 조회)를 호출해 종목명·통화·상장상태 등 상세 정보를 채울 수 있습니다.
+   *
+   * **Rate Limits Group**: `STOCK_ALL`
+   *
+   */
+  public listStocks<ThrowOnError extends boolean = false>(
+    options: Options<ListStocksData, ThrowOnError>,
+  ): RequestResult<ListStocksResponses, ListStocksErrors, ThrowOnError> {
+    return (options.client ?? this.client).get<ListStocksResponses, ListStocksErrors, ThrowOnError>(
+      {
+        security: [{ scheme: 'bearer', type: 'http' }],
+        url: '/api/v1/stocks/all',
+        ...options,
+      },
+    );
   }
 
   /**
@@ -343,6 +390,174 @@ export class TossInvestApi extends HeyApiClient {
     >({
       security: [{ scheme: 'bearer', type: 'http' }],
       url: '/api/v1/stocks/{symbol}/warnings',
+      ...options,
+    });
+  }
+
+  /**
+   * 투자자별 매매동향 조회
+   *
+   * 국내(KR) 종목의 투자자별 매매동향을 일별 거래량 시계열로 조회합니다. 개인·외국인·기관·기타법인
+   * 4개 투자자 분류의 매수·매도·순매수 거래량을 최신순으로 제공하며, 기관은 7개 세부 분류(`breakdown`)를
+   * 함께 제공합니다. 외국인 보유 현황(`foreignerHolding`)과 CFD 잔고(`cfd`)도 일자별로 포함합니다.
+   *
+   * - 국내(KR) 종목만 지원합니다. 다른 시장의 종목은 400 `unsupported-market` 으로 응답합니다.
+   * - 거래량은 KRX·NXT 통합 기준이며, 모든 수량은 주식 수(주) 정수입니다. 순매수(`netBuyVolume`)는
+   * 매수 − 매도로 계산되며 음수면 순매도입니다. 거래대금(금액) 축은 제공하지 않습니다.
+   * - `foreigner` 는 등록외국인 기준입니다. 시장 지표의 투자자별 매매대금
+   * (`GET /api/v1/market-indicators/{symbol}/investor-trading`, 등록·미등록 합계)과 기준이 다릅니다.
+   * - 당일 기록은 장중 잠정치로 제공합니다. 잠정치가 제공되지 않는 `individual`(개인)·
+   * `institution.breakdown`(기관 세부)·`otherCorporation`(기타법인)·`foreignerHolding`(외국인 보유)·
+   * `cfd`(CFD 잔고)는 null 이며, `updatedAt` 으로 마지막 갱신 시각을 확인할 수 있습니다.
+   * - 다음 페이지는 응답의 `nextUntil` 값을 `until` 파라미터로 전달해 조회합니다.
+   *
+   * **데이터 적시성**: 하나의 일자 기록은 시간에 걸쳐 완성됩니다. 투자자별 매매동향 확정치와
+   * 외국인 보유(`foreignerHolding`)는 해당 일자 저녁에 반영됩니다. CFD 잔고(`cfd`)는 다음 영업일 새벽(T+1)에
+   * 반영되며, 외국인 보유는 다음 영업일 오전에 확정치로 한 번 더 갱신될 수 있습니다.
+   * `updatedAt` 은 이 모든 반영을 포함한 기록 전체의 마지막 갱신 시각입니다.
+   *
+   * **Rate Limits Group**: `STOCK_TRADING_TREND`
+   *
+   */
+  public getStockInvestorTrading<ThrowOnError extends boolean = false>(
+    options: Options<GetStockInvestorTradingData, ThrowOnError>,
+  ): RequestResult<GetStockInvestorTradingResponses, GetStockInvestorTradingErrors, ThrowOnError> {
+    return (options.client ?? this.client).get<
+      GetStockInvestorTradingResponses,
+      GetStockInvestorTradingErrors,
+      ThrowOnError
+    >({
+      security: [{ scheme: 'bearer', type: 'http' }],
+      url: '/api/v1/stocks/{symbol}/investor-trading',
+      ...options,
+    });
+  }
+
+  /**
+   * 프로그램매매 동향 조회
+   *
+   * 국내(KR) 종목의 프로그램매매 동향을 일별 거래량 시계열로 조회합니다. 차익거래(`arbitrage`)·
+   * 비차익거래(`nonArbitrage`) 각각의 매수·매도·순매수 거래량을 최신순으로 제공합니다.
+   *
+   * - 국내(KR) 종목만 지원합니다. 다른 시장의 종목은 400 `unsupported-market` 으로 응답합니다.
+   * - KRX 시장 거래만 집계하며 NXT 거래는 포함하지 않습니다. 모든 수량은 주식 수(주) 정수입니다.
+   * 순매수(`netBuyVolume`)는 매수 − 매도로 계산되며 음수면 순매도입니다. 거래대금(금액) 축은 제공하지 않습니다.
+   * - 다음 페이지는 응답의 `nextUntil` 값을 `until` 파라미터로 전달해 조회합니다.
+   *
+   * **데이터 적시성**: 당일 기록도 제공되며, 장 종료 전까지 갱신될 수 있습니다.
+   *
+   * **Rate Limits Group**: `STOCK_TRADING_TREND`
+   *
+   */
+  public getStockProgramTrades<ThrowOnError extends boolean = false>(
+    options: Options<GetStockProgramTradesData, ThrowOnError>,
+  ): RequestResult<GetStockProgramTradesResponses, GetStockProgramTradesErrors, ThrowOnError> {
+    return (options.client ?? this.client).get<
+      GetStockProgramTradesResponses,
+      GetStockProgramTradesErrors,
+      ThrowOnError
+    >({
+      security: [{ scheme: 'bearer', type: 'http' }],
+      url: '/api/v1/stocks/{symbol}/program-trades',
+      ...options,
+    });
+  }
+
+  /**
+   * 공매도 동향 조회
+   *
+   * 국내(KR) 종목의 공매도 동향을 일별 시계열로 조회합니다. 공매도 거래량·거래대금과 함께
+   * 해당 일자 전체 거래량·거래대금 대비 공매도 비중을 최신순으로 제공합니다.
+   *
+   * - 국내(KR) 종목만 지원합니다. 다른 시장의 종목은 400 `unsupported-market` 으로 응답합니다.
+   * - 모든 금액은 원화(KRW)이며, 별도의 통화 필드는 제공하지 않습니다.
+   * - 비중(`shortSellingVolumeRate`·`shortSellingAmountRate`)의 분모는 정규장 외 세션
+   * (장전·장후·시간외단일가)을 포함한 해당 일자 누적 거래량·거래대금입니다.
+   * 분모 데이터가 없는 날짜는 비중이 null, 분모가 0 이면 `0` 입니다.
+   * - 다음 페이지는 응답의 `nextUntil` 값을 `until` 파라미터로 전달해 조회합니다.
+   *
+   * **데이터 적시성**: 일별 확정치는 해당 일자 저녁에 반영됩니다.
+   *
+   * **Rate Limits Group**: `STOCK_TRADING_TREND`
+   *
+   */
+  public getStockShortSelling<ThrowOnError extends boolean = false>(
+    options: Options<GetStockShortSellingData, ThrowOnError>,
+  ): RequestResult<GetStockShortSellingResponses, GetStockShortSellingErrors, ThrowOnError> {
+    return (options.client ?? this.client).get<
+      GetStockShortSellingResponses,
+      GetStockShortSellingErrors,
+      ThrowOnError
+    >({
+      security: [{ scheme: 'bearer', type: 'http' }],
+      url: '/api/v1/stocks/{symbol}/short-selling',
+      ...options,
+    });
+  }
+
+  /**
+   * 신용거래 동향 조회
+   *
+   * 국내(KR) 종목의 신용거래 동향을 일별 시계열로 조회합니다. 신용융자(`marginLoan`)·신용대주(`stockLoan`)
+   * 각각의 신규·상환·잔고 수량과 잔고 비율·공여율을 최신순으로 제공합니다.
+   *
+   * - 국내(KR) 종목만 지원합니다. 다른 시장의 종목은 400 `unsupported-market` 으로 응답합니다.
+   * - 자기신용과 유통금융을 합산한 값이며, 모든 수량은 주식 수(주) 정수입니다.
+   * - `stockLoan`(신용대주)은 주식을 빌려 매도하는 개인 신용거래입니다. 기관 간 대차거래
+   * (`GET /api/v1/stocks/{symbol}/securities-lending`)와는 다른 데이터입니다.
+   * - 해당 일자에 융자·대주 중 한쪽 데이터만 있으면 없는 쪽 객체는 null 입니다.
+   * - 다음 페이지는 응답의 `nextUntil` 값을 `until` 파라미터로 전달해 조회합니다.
+   *
+   * **데이터 적시성**: 다음 영업일 새벽에 반영됩니다(T+1). 최신 기록은 전 영업일입니다.
+   *
+   * **Rate Limits Group**: `STOCK_TRADING_TREND`
+   *
+   */
+  public getStockCreditTrades<ThrowOnError extends boolean = false>(
+    options: Options<GetStockCreditTradesData, ThrowOnError>,
+  ): RequestResult<GetStockCreditTradesResponses, GetStockCreditTradesErrors, ThrowOnError> {
+    return (options.client ?? this.client).get<
+      GetStockCreditTradesResponses,
+      GetStockCreditTradesErrors,
+      ThrowOnError
+    >({
+      security: [{ scheme: 'bearer', type: 'http' }],
+      url: '/api/v1/stocks/{symbol}/credit-trades',
+      ...options,
+    });
+  }
+
+  /**
+   * 대차거래 동향 조회
+   *
+   * 국내(KR) 종목의 대차거래 동향을 일별 시계열로 조회합니다. 대차 체결·상환·잔고 수량과
+   * 잔고 금액을 최신순으로 제공합니다.
+   *
+   * - 국내(KR) 종목만 지원합니다. 다른 시장의 종목은 400 `unsupported-market` 으로 응답합니다.
+   * - 모든 금액은 원화(KRW)이며, 별도의 통화 필드는 제공하지 않습니다.
+   * - 대차거래는 기관 투자자 간 주식 대여·차입 거래입니다. 주식을 빌려 매도하는 개인 신용거래인
+   * 신용대주(`GET /api/v1/stocks/{symbol}/credit-trades` 의 `stockLoan`)와는 다른 데이터입니다.
+   * - 다음 페이지는 응답의 `nextUntil` 값을 `until` 파라미터로 전달해 조회합니다.
+   *
+   * **데이터 적시성**: 일별 확정치는 해당 일자 저녁에 반영됩니다.
+   *
+   * **Rate Limits Group**: `STOCK_TRADING_TREND`
+   *
+   */
+  public getStockSecuritiesLending<ThrowOnError extends boolean = false>(
+    options: Options<GetStockSecuritiesLendingData, ThrowOnError>,
+  ): RequestResult<
+    GetStockSecuritiesLendingResponses,
+    GetStockSecuritiesLendingErrors,
+    ThrowOnError
+  > {
+    return (options.client ?? this.client).get<
+      GetStockSecuritiesLendingResponses,
+      GetStockSecuritiesLendingErrors,
+      ThrowOnError
+    >({
+      security: [{ scheme: 'bearer', type: 'http' }],
+      url: '/api/v1/stocks/{symbol}/securities-lending',
       ...options,
     });
   }
@@ -630,7 +845,8 @@ export class TossInvestApi extends HeyApiClient {
    * - `quantity`: 주문 수량 (주 단위). 지정한 수량만큼 주문. 소수점 수량은 미국 주식 시장가 매도(`MARKET`+`SELL`)에만 허용 (그 외는 정수만)
    * - `orderAmount`: 주문 금액 (달러). 지정한 금액만큼 주문하며, 체결 수량은 시장가에 따라 결정. US MARKET 전용
    *
-   * **금액 주문 (`orderAmount`)**: 정규장 시간에만 가능합니다. 정규장 외 시간에 호출 시 `422 amount-order-outside-regular-hours` 를 반환합니다.
+   * **소수점 거래 접수 시간**: 금액 주문 (`orderAmount`) 과 소수점 수량 주문은 정규장 시작부터 **정규장 종료 1시간 전**까지만 접수할 수 있습니다.
+   * 그 외 시간에 호출 시 각각 `422 amount-order-outside-regular-hours` / `422 fractional-quantity-outside-regular-hours` 를 반환합니다.
    *
    * **Rate Limits Group**: `ORDER`
    *
@@ -769,6 +985,10 @@ export class TossInvestApi extends HeyApiClient {
    * 특정 종목의 가격을 감시해 조건 충족 시 자동으로 매매(매수/매도)하는 조건주문을 생성합니다.
    *
    * 감시가와 매매 방향(매수/매도)을 설정한 후 가격이 감시가에 도달하면 조건이 발동되어 주문이 생성됩니다.
+   *
+   * **발동 세션**: 조건 감시·발동 세션은 시장에 따라 다릅니다.
+   * - 국내 주식: KRX 정규장에서만 발동됩니다.
+   * - 해외 주식: 장 구분과 상관없이, 거래 가능한 모든 시간대에 발동됩니다.
    *
    * **타입(`type`)** — 조건의 개수와 관계를 정합니다:
    * - `SINGLE`: `first` 한 조건만 감시합니다.
