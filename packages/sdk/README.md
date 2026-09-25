@@ -37,6 +37,9 @@ const prices = await client.getPrices({
 The SDK does not retry an API call that returns `401`. It clears the cached token so the next call
 issues a new one. This avoids automatically repeating order requests.
 
+Issuing a new token revokes the previous one (`token-revoked`). Running several processes with the
+same credentials makes them invalidate each other's tokens, so share one client per credential pair.
+
 ### Account APIs
 
 `accountSeq` does not expire. Fetch it once, select the intended account, and reuse the header for

@@ -245,7 +245,7 @@ export type PriceLimitResponse = {
 
 export type CandlePageResponse = {
   /**
-   * 캔들 목록
+   * 캔들 목록. 최신순(`timestamp` 내림차순) 정렬 — 배열 첫 요소가 가장 최근 봉, 마지막 요소가 가장 오래된 봉입니다.
    */
   candles: Array<Candle>;
   /**
@@ -256,7 +256,10 @@ export type CandlePageResponse = {
 
 export type Candle = {
   /**
-   * 봉 시작 시각
+   * 봉 기준 시각
+   * - `1m`: 봉 종료 시각. 해당 봉은 `[timestamp - 1분, timestamp)` 구간의 체결을 집계합니다.
+   * - `1d`: 해당 거래일 (시각은 현지 자정 고정)
+   *
    */
   timestamp: string;
   /**
@@ -662,14 +665,14 @@ export type ShortSellingRecord = {
   shortSellingAmount: string;
   /**
    * 공매도 거래량 비중 (소수 비율, 소수 다섯째 자리까지). 해당 일자 전체 거래량 대비 공매도 거래량.
-   * 분모인 전체 거래량은 정규장 외 세션(장전·장후·시간외단일가)을 포함한 당일 누적입니다.
+   * 분모인 전체 거래량은 정규장 외 세션(장전·장후 시간외종가, 애프터마켓)을 포함한 당일 누적입니다.
    * 기준 거래량 데이터가 없는 날짜는 null, 기준 거래량이 0 이면 `0`. 예: `0.03215` = 3.215%
    *
    */
   shortSellingVolumeRate?: string | null;
   /**
    * 공매도 거래대금 비중 (소수 비율, 소수 넷째 자리까지). 해당 일자 전체 거래대금 대비 공매도 거래대금.
-   * 분모인 전체 거래대금은 정규장 외 세션(장전·장후·시간외단일가)을 포함한 당일 누적입니다.
+   * 분모인 전체 거래대금은 정규장 외 세션(장전·장후 시간외종가, 애프터마켓)을 포함한 당일 누적입니다.
    * 기준 거래대금 데이터가 없는 날짜는 null, 기준 거래대금이 0 이면 `0`. 예: `0.0318` = 3.18%
    *
    */
@@ -823,8 +826,8 @@ export type KrMarketDay = {
 };
 
 /**
- * 거래 가능 시간. 특수장(시간외종가/시간외단일가) 제외, 통합 모드 (KRX+NXT) 기준.
- * 세 세션(`preMarket`, `regularMarket`, `afterMarket`) 각각 nullable. 해당 세션이 휴장이면 null,
+ * 거래 가능 시간. 장전/장후 시간외종가 제외, 통합 모드 (KRX+NXT) 기준.
+ * 세 세션(`preMarket`, `regularMarket`, `afterMarket`) 각각 nullable. 해당 세션이 KRX·NXT 모두 휴장이면 null,
  * 세 세션 모두 null 이면 상위 `integrated` 자체가 null.
  *
  */
@@ -838,7 +841,7 @@ export type IntegratedHour = {
    */
   regularMarket?: RegularMarketSession | null;
   /**
-   * 애프터마켓 (NXT). NXT 애프터마켓이 휴장이면 null
+   * 애프터마켓. KRX·NXT 애프터마켓의 합집합. 둘 다 휴장이면 null
    */
   afterMarket?: AfterMarketSession | null;
 };
@@ -880,19 +883,19 @@ export type RegularMarketSession = {
 };
 
 /**
- * 애프터마켓 세션 (NXT)
+ * 애프터마켓 세션. KRX·NXT 애프터마켓의 합집합(가장 이른 시작 ~ 가장 늦은 종료)
  */
 export type AfterMarketSession = {
   /**
-   * 애프터마켓 시작
+   * 애프터마켓 시작. 가장 이른 KRX/NXT 애프터마켓 시작 시각
    */
   startTime: string;
   /**
-   * 애프터마켓 내 시가단일가 구간 종료.
+   * 애프터마켓 내 시가단일가 구간 종료 (NXT 기준). NXT 애프터마켓이 휴장이면 null
    */
   singlePriceAuctionEndTime?: string | null;
   /**
-   * 애프터마켓 전체 종료
+   * 애프터마켓 전체 종료. 가장 늦은 KRX/NXT 애프터마켓 종료 시각
    */
   endTime: string;
 };
@@ -1004,7 +1007,7 @@ export type RankingItem = {
    */
   rank: number;
   /**
-   * 종목 심볼. KR: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL)
+   * 종목 심볼. KR: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL)
    */
   symbol: string;
   currency: Currency;
@@ -1059,7 +1062,7 @@ export type MarketIndicatorPriceResponse = {
 
 export type MarketIndicatorCandlePageResponse = {
   /**
-   * 캔들 목록
+   * 캔들 목록. 최신순(`timestamp` 내림차순) 정렬 — 배열 첫 요소가 가장 최근 봉, 마지막 요소가 가장 오래된 봉입니다.
    */
   candles: Array<MarketIndicatorCandle>;
   /**
@@ -1230,7 +1233,7 @@ export type HoldingsOverview = {
 
 export type HoldingsItem = {
   /**
-   * 종목 심볼. KR: 6자리 숫자, US: 티커
+   * 종목 심볼. KR: 6자리 종목코드 (숫자 또는 영문·숫자 조합), US: 티커
    */
   symbol: string;
   /**
@@ -1402,7 +1405,7 @@ export type OrderCreateRequest =
        */
       clientOrderId?: string;
       /**
-       * 종목 심볼. KRX: 6자리 숫자, US: 영문 티커
+       * 종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합), US: 영문 티커
        */
       symbol: string;
       /**
@@ -1561,7 +1564,7 @@ export type OrderOperationResponse = {
  */
 export type ConditionalOrderCreateRequest = {
   /**
-   * 종목 심볼. KRX: 6자리 숫자, US: 영문 티커
+   * 종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합), US: 영문 티커
    */
   symbol: string;
   /**
@@ -1723,7 +1726,7 @@ export type ConditionalOrderDetailResponse = {
    */
   status: 'WATCHING' | 'PAUSED' | 'ORDERING' | 'ORDERED' | 'COMPLETED' | 'EXPIRED';
   /**
-   * 종목 심볼. KRX: 6자리 숫자, US: 영문 티커
+   * 종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합), US: 영문 티커
    */
   symbol: string;
   /**
@@ -1831,7 +1834,7 @@ export type Order = {
    */
   orderId: string;
   /**
-   * 종목 심볼. KRX: 6자리 숫자, US: 영문 티커
+   * 종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합), US: 영문 티커
    */
   symbol: string;
   /**
@@ -1995,12 +1998,12 @@ export type ConditionalOrderCreateResponse = {
 };
 
 /**
- * 종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
+ * 종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
  */
 export type Symbol = string;
 
 /**
- * 종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
+ * 종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
  */
 export type SymbolQuery = string;
 
@@ -2019,7 +2022,7 @@ export type AccountSeq = number;
 export type OrderId = string;
 
 /**
- * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).
+ * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0).
  */
 export type KrSymbol = string;
 
@@ -2072,7 +2075,7 @@ export type GetOrderbookData = {
   path?: never;
   query: {
     /**
-     * 종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
+     * 종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
      */
     symbol: string;
   };
@@ -2156,7 +2159,7 @@ export type GetTradesData = {
   path?: never;
   query: {
     /**
-     * 종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
+     * 종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
      */
     symbol: string;
     /**
@@ -2200,7 +2203,7 @@ export type GetPriceLimitData = {
   path?: never;
   query: {
     /**
-     * 종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
+     * 종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
      */
     symbol: string;
   };
@@ -2240,7 +2243,7 @@ export type GetCandlesData = {
   path?: never;
   query: {
     /**
-     * 종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
+     * 종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
      */
     symbol: string;
     /**
@@ -2421,7 +2424,7 @@ export type GetStockWarningsData = {
   body?: never;
   path: {
     /**
-     * 종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
+     * 종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
      */
     symbol: string;
   };
@@ -2470,7 +2473,7 @@ export type GetStockInvestorTradingData = {
   body?: never;
   path: {
     /**
-     * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).
+     * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0).
      */
     symbol: string;
   };
@@ -2536,7 +2539,7 @@ export type GetStockProgramTradesData = {
   body?: never;
   path: {
     /**
-     * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).
+     * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0).
      */
     symbol: string;
   };
@@ -2602,7 +2605,7 @@ export type GetStockShortSellingData = {
   body?: never;
   path: {
     /**
-     * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).
+     * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0).
      */
     symbol: string;
   };
@@ -2668,7 +2671,7 @@ export type GetStockCreditTradesData = {
   body?: never;
   path: {
     /**
-     * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).
+     * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0).
      */
     symbol: string;
   };
@@ -2734,7 +2737,7 @@ export type GetStockSecuritiesLendingData = {
   body?: never;
   path: {
     /**
-     * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).
+     * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0).
      */
     symbol: string;
   };
@@ -3215,7 +3218,7 @@ export type GetHoldingsData = {
   path?: never;
   query?: {
     /**
-     * 종목 심볼. KR: 6자리 숫자 (예: 005930), US: 티커 (예: AAPL).
+     * 종목 심볼. KR: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 티커 (예: AAPL).
      * 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
      * 제공 시 해당 종목만 필터링하여 반환하며, 요약 필드도 해당 종목 기준으로 재계산합니다.
      * 미제공 시 전체 보유 종목을 반환합니다.
@@ -3287,7 +3290,7 @@ export type GetOrdersData = {
     status: 'OPEN' | 'CLOSED';
     /**
      * 종목 심볼. 지정 시 해당 종목의 주문만 조회.
-     * KRX: 6자리 숫자 (`005930`), US: 영문 티커 (`AAPL`).
+     * KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: `005930`·`0101N0`), US: 영문 티커 (`AAPL`).
      * 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
      *
      */
@@ -3625,7 +3628,7 @@ export type GetConditionalOrdersData = {
     status: 'OPEN' | 'CLOSED';
     /**
      * 종목 심볼 필터 (선택). `OPEN`/`CLOSED` 모두에서 사용할 수 있습니다.
-     * KRX: 6자리 숫자 (`005930`), US: 영문 티커 (`AAPL`).
+     * KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: `005930`·`0101N0`), US: 영문 티커 (`AAPL`).
      *
      */
     symbol?: string;
@@ -3921,7 +3924,7 @@ export type GetSellableQuantityData = {
   path?: never;
   query: {
     /**
-     * 종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
+     * 종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
      */
     symbol: string;
   };

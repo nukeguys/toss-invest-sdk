@@ -267,7 +267,7 @@ export function createTossInvestMcpServer(
   }
 
   const server = new McpServer(
-    { name: 'toss-invest', version: '0.2.0' },
+    { name: 'toss-invest', version: '0.2.1' },
     {
       instructions: allowTrading
         ? '토스증권 조회 및 주문 서버입니다. 계좌 API를 호출하기 전에 toss_list_accounts로 accountSeq를 확인하고, 주문 도구는 사용자의 승인을 받은 경우에만 호출하세요.'
@@ -327,7 +327,8 @@ export function createTossInvestMcpServer(
     'toss_get_candles',
     {
       annotations: readOnly,
-      description: '한 종목의 분봉 또는 일봉 OHLCV 데이터를 최대 200개까지 조회합니다.',
+      description:
+        '한 종목의 분봉 또는 일봉 OHLCV 데이터를 최대 200개까지 조회합니다. 캔들은 최신순(timestamp 내림차순)으로 정렬되며, 1분봉의 timestamp는 봉 종료 시각, 일봉은 해당 거래일 자정입니다.',
       inputSchema: zGetCandlesQuery,
       title: '종목 캔들 조회',
     },
@@ -568,7 +569,8 @@ export function createTossInvestMcpServer(
     'toss_get_market_indicator_candles',
     {
       annotations: readOnly,
-      description: '한 시장 지표의 분봉 또는 일봉 데이터를 최대 200개까지 조회합니다.',
+      description:
+        '한 시장 지표의 분봉 또는 일봉 데이터를 최대 200개까지 조회합니다. 캔들은 최신순(timestamp 내림차순)으로 정렬되며, 1분봉의 timestamp는 봉 종료 시각, 일봉은 해당 거래일 자정입니다.',
       inputSchema: z.object({
         ...zGetMarketIndicatorCandlesPath.shape,
         ...zGetMarketIndicatorCandlesQuery.shape,

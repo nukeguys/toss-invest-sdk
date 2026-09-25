@@ -232,7 +232,8 @@ export const zPriceLimitResponse = z.object({
 
 export const zCandle = z.object({
   timestamp: z.iso.datetime({ offset: true }).register(z.globalRegistry, {
-    description: '봉 시작 시각',
+    description:
+      '봉 기준 시각\n- `1m`: 봉 종료 시각. 해당 봉은 `[timestamp - 1분, timestamp)` 구간의 체결을 집계합니다.\n- `1d`: 해당 거래일 (시각은 현지 자정 고정)\n',
   }),
   openPrice: z.string().max(30).register(z.globalRegistry, {
     description: '시가',
@@ -254,7 +255,8 @@ export const zCandle = z.object({
 
 export const zCandlePageResponse = z.object({
   candles: z.array(zCandle).register(z.globalRegistry, {
-    description: '캔들 목록',
+    description:
+      '캔들 목록. 최신순(`timestamp` 내림차순) 정렬 — 배열 첫 요소가 가장 최근 봉, 마지막 요소가 가장 오래된 봉입니다.',
   }),
   nextBefore: z.iso.datetime({ offset: true }).nullish(),
 });
@@ -644,25 +646,25 @@ export const zRegularMarketSession = z
   });
 
 /**
- * 애프터마켓 세션 (NXT)
+ * 애프터마켓 세션. KRX·NXT 애프터마켓의 합집합(가장 이른 시작 ~ 가장 늦은 종료)
  */
 export const zAfterMarketSession = z
   .object({
     startTime: z.iso.datetime({ offset: true }).register(z.globalRegistry, {
-      description: '애프터마켓 시작',
+      description: '애프터마켓 시작. 가장 이른 KRX/NXT 애프터마켓 시작 시각',
     }),
     singlePriceAuctionEndTime: z.iso.datetime({ offset: true }).nullish(),
     endTime: z.iso.datetime({ offset: true }).register(z.globalRegistry, {
-      description: '애프터마켓 전체 종료',
+      description: '애프터마켓 전체 종료. 가장 늦은 KRX/NXT 애프터마켓 종료 시각',
     }),
   })
   .register(z.globalRegistry, {
-    description: '애프터마켓 세션 (NXT)',
+    description: '애프터마켓 세션. KRX·NXT 애프터마켓의 합집합(가장 이른 시작 ~ 가장 늦은 종료)',
   });
 
 /**
- * 거래 가능 시간. 특수장(시간외종가/시간외단일가) 제외, 통합 모드 (KRX+NXT) 기준.
- * 세 세션(`preMarket`, `regularMarket`, `afterMarket`) 각각 nullable. 해당 세션이 휴장이면 null,
+ * 거래 가능 시간. 장전/장후 시간외종가 제외, 통합 모드 (KRX+NXT) 기준.
+ * 세 세션(`preMarket`, `regularMarket`, `afterMarket`) 각각 nullable. 해당 세션이 KRX·NXT 모두 휴장이면 null,
  * 세 세션 모두 null 이면 상위 `integrated` 자체가 null.
  *
  */
@@ -674,7 +676,7 @@ export const zIntegratedHour = z
   })
   .register(z.globalRegistry, {
     description:
-      '거래 가능 시간. 특수장(시간외종가/시간외단일가) 제외, 통합 모드 (KRX+NXT) 기준.\n세 세션(`preMarket`, `regularMarket`, `afterMarket`) 각각 nullable. 해당 세션이 휴장이면 null,\n세 세션 모두 null 이면 상위 `integrated` 자체가 null.\n',
+      '거래 가능 시간. 장전/장후 시간외종가 제외, 통합 모드 (KRX+NXT) 기준.\n세 세션(`preMarket`, `regularMarket`, `afterMarket`) 각각 nullable. 해당 세션이 KRX·NXT 모두 휴장이면 null,\n세 세션 모두 null 이면 상위 `integrated` 자체가 null.\n',
   });
 
 export const zKrMarketDay = z.object({
@@ -796,7 +798,8 @@ export const zRankingItem = z.object({
     description: '순위. 1부터 시작',
   }),
   symbol: z.string().register(z.globalRegistry, {
-    description: '종목 심볼. KR: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL)',
+    description:
+      '종목 심볼. KR: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL)',
   }),
   currency: zCurrency,
   price: zRankingPrice,
@@ -850,7 +853,8 @@ export const zMarketIndicatorCandle = z.object({
 
 export const zMarketIndicatorCandlePageResponse = z.object({
   candles: z.array(zMarketIndicatorCandle).register(z.globalRegistry, {
-    description: '캔들 목록',
+    description:
+      '캔들 목록. 최신순(`timestamp` 내림차순) 정렬 — 배열 첫 요소가 가장 최근 봉, 마지막 요소가 가장 오래된 봉입니다.',
   }),
   nextBefore: z.iso.datetime({ offset: true }).nullish(),
 });
@@ -1071,7 +1075,7 @@ export const zCost = z
 
 export const zHoldingsItem = z.object({
   symbol: z.string().register(z.globalRegistry, {
-    description: '종목 심볼. KR: 6자리 숫자, US: 티커',
+    description: '종목 심볼. KR: 6자리 종목코드 (숫자 또는 영문·숫자 조합), US: 티커',
   }),
   name: z.string().register(z.globalRegistry, {
     description: '종목명',
@@ -1116,7 +1120,7 @@ export const zOrderCreateRequest = z.union([
         })
         .optional(),
       symbol: z.string().register(z.globalRegistry, {
-        description: '종목 심볼. KRX: 6자리 숫자, US: 영문 티커',
+        description: '종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합), US: 영문 티커',
       }),
       side: z.enum(['BUY', 'SELL']).register(z.globalRegistry, {
         description: '주문 방향',
@@ -1291,7 +1295,7 @@ export const zConditionRequest = z
 export const zConditionalOrderCreateRequest = z
   .object({
     symbol: z.string().register(z.globalRegistry, {
-      description: '종목 심볼. KRX: 6자리 숫자, US: 영문 티커',
+      description: '종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합), US: 영문 티커',
     }),
     type: z.enum(['SINGLE', 'OCO', 'OTO']).register(z.globalRegistry, {
       description:
@@ -1437,7 +1441,7 @@ export const zConditionalOrderDetailResponse = z
           '조건주문(그룹) 상태 — 살아있는 조건(leg)의 상태를 대표로 따릅니다.\nleg 전용 상태인 `HOLDING`·`CANCELED` 는 최상위 status 로는 내려오지 않습니다 (조건별 상태 `first.status`/`second.status` 에서만 노출).\n- `WATCHING`: 조건 감시 중\n- `PAUSED`: 일시중지\n- `ORDERING`: 조건 충족 — 주문 생성 진행 중\n- `ORDERED`: 주문 생성됨\n- `COMPLETED`: 완료\n- `EXPIRED`: 만료\n',
       }),
     symbol: z.string().register(z.globalRegistry, {
-      description: '종목 심볼. KRX: 6자리 숫자, US: 영문 티커',
+      description: '종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합), US: 영문 티커',
     }),
     market: z.enum(['KR', 'US']).register(z.globalRegistry, {
       description: '시장 구분',
@@ -1525,7 +1529,7 @@ export const zOrder = z.object({
     description: '주문 식별자',
   }),
   symbol: z.string().register(z.globalRegistry, {
-    description: '종목 심볼. KRX: 6자리 숫자, US: 영문 티커',
+    description: '종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합), US: 영문 티커',
   }),
   side: z.enum(['BUY', 'SELL']).register(z.globalRegistry, {
     description: '주문 방향',
@@ -1611,25 +1615,25 @@ export const zConditionalOrderCreateResponse = z
   });
 
 /**
- * 종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
+ * 종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
  */
 export const zSymbol = z
   .string()
   .regex(/^[A-Za-z0-9.\-]+$/)
   .register(z.globalRegistry, {
     description:
-      "종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.",
+      "종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.",
   });
 
 /**
- * 종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
+ * 종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.
  */
 export const zSymbolQuery = z
   .string()
   .regex(/^[A-Za-z0-9.\-]+$/)
   .register(z.globalRegistry, {
     description:
-      "종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.",
+      "종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.",
   });
 
 /**
@@ -1660,13 +1664,14 @@ export const zOrderId = z.string().register(z.globalRegistry, {
 });
 
 /**
- * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).
+ * 국내(KR) 종목 심볼. KRX 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0).
  */
 export const zKrSymbol = z
   .string()
   .regex(/^[A-Za-z0-9.\-]+$/)
   .register(z.globalRegistry, {
-    description: '국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).',
+    description:
+      '국내(KR) 종목 심볼. KRX 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0).',
   });
 
 export const zIssueOAuth2TokenBody = zOAuth2TokenRequest;
@@ -1677,7 +1682,7 @@ export const zGetOrderbookQuery = z.object({
     .regex(/^[A-Za-z0-9.\-]+$/)
     .register(z.globalRegistry, {
       description:
-        "종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.",
+        "종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.",
     }),
 });
 
@@ -1697,7 +1702,7 @@ export const zGetTradesQuery = z.object({
     .regex(/^[A-Za-z0-9.\-]+$/)
     .register(z.globalRegistry, {
       description:
-        "종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.",
+        "종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.",
     }),
   count: z
     .int()
@@ -1716,7 +1721,7 @@ export const zGetPriceLimitQuery = z.object({
     .regex(/^[A-Za-z0-9.\-]+$/)
     .register(z.globalRegistry, {
       description:
-        "종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.",
+        "종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.",
     }),
 });
 
@@ -1726,7 +1731,7 @@ export const zGetCandlesQuery = z.object({
     .regex(/^[A-Za-z0-9.\-]+$/)
     .register(z.globalRegistry, {
       description:
-        "종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.",
+        "종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.",
     }),
   interval: z.enum(['1m', '1d']).register(z.globalRegistry, {
     description: '봉 단위',
@@ -1809,7 +1814,7 @@ export const zGetStockWarningsPath = z.object({
     .regex(/^[A-Za-z0-9.\-]+$/)
     .register(z.globalRegistry, {
       description:
-        "종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.",
+        "종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.",
     }),
 });
 
@@ -1818,7 +1823,8 @@ export const zGetStockInvestorTradingPath = z.object({
     .string()
     .regex(/^[A-Za-z0-9.\-]+$/)
     .register(z.globalRegistry, {
-      description: '국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).',
+      description:
+        '국내(KR) 종목 심볼. KRX 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0).',
     }),
 });
 
@@ -1846,7 +1852,8 @@ export const zGetStockProgramTradesPath = z.object({
     .string()
     .regex(/^[A-Za-z0-9.\-]+$/)
     .register(z.globalRegistry, {
-      description: '국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).',
+      description:
+        '국내(KR) 종목 심볼. KRX 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0).',
     }),
 });
 
@@ -1874,7 +1881,8 @@ export const zGetStockShortSellingPath = z.object({
     .string()
     .regex(/^[A-Za-z0-9.\-]+$/)
     .register(z.globalRegistry, {
-      description: '국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).',
+      description:
+        '국내(KR) 종목 심볼. KRX 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0).',
     }),
 });
 
@@ -1902,7 +1910,8 @@ export const zGetStockCreditTradesPath = z.object({
     .string()
     .regex(/^[A-Za-z0-9.\-]+$/)
     .register(z.globalRegistry, {
-      description: '국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).',
+      description:
+        '국내(KR) 종목 심볼. KRX 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0).',
     }),
 });
 
@@ -1930,7 +1939,8 @@ export const zGetStockSecuritiesLendingPath = z.object({
     .string()
     .regex(/^[A-Za-z0-9.\-]+$/)
     .register(z.globalRegistry, {
-      description: '국내(KR) 종목 심볼. KRX 6자리 종목코드 (예: 005930).',
+      description:
+        '국내(KR) 종목 심볼. KRX 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0).',
     }),
 });
 
@@ -2111,7 +2121,7 @@ export const zGetHoldingsQuery = z.object({
     .regex(/^[A-Za-z0-9.\-]+$/)
     .register(z.globalRegistry, {
       description:
-        "종목 심볼. KR: 6자리 숫자 (예: 005930), US: 티커 (예: AAPL).\n영문 대/소문자, 숫자, '.', '-' 만 허용한다.\n제공 시 해당 종목만 필터링하여 반환하며, 요약 필드도 해당 종목 기준으로 재계산합니다.\n미제공 시 전체 보유 종목을 반환합니다.\n",
+        "종목 심볼. KR: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 티커 (예: AAPL).\n영문 대/소문자, 숫자, '.', '-' 만 허용한다.\n제공 시 해당 종목만 필터링하여 반환하며, 요약 필드도 해당 종목 기준으로 재계산합니다.\n미제공 시 전체 보유 종목을 반환합니다.\n",
     })
     .optional(),
 });
@@ -2141,7 +2151,7 @@ export const zGetOrdersQuery = z.object({
     .regex(/^[A-Za-z0-9.\-]+$/)
     .register(z.globalRegistry, {
       description:
-        "종목 심볼. 지정 시 해당 종목의 주문만 조회.\nKRX: 6자리 숫자 (`005930`), US: 영문 티커 (`AAPL`).\n영문 대/소문자, 숫자, '.', '-' 만 허용한다.\n",
+        "종목 심볼. 지정 시 해당 종목의 주문만 조회.\nKRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: `005930`·`0101N0`), US: 영문 티커 (`AAPL`).\n영문 대/소문자, 숫자, '.', '-' 만 허용한다.\n",
     })
     .optional(),
   from: z.iso
@@ -2286,7 +2296,7 @@ export const zGetConditionalOrdersQuery = z.object({
     .regex(/^[A-Za-z0-9.\-]+$/)
     .register(z.globalRegistry, {
       description:
-        '종목 심볼 필터 (선택). `OPEN`/`CLOSED` 모두에서 사용할 수 있습니다.\nKRX: 6자리 숫자 (`005930`), US: 영문 티커 (`AAPL`).\n',
+        '종목 심볼 필터 (선택). `OPEN`/`CLOSED` 모두에서 사용할 수 있습니다.\nKRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: `005930`·`0101N0`), US: 영문 티커 (`AAPL`).\n',
     })
     .optional(),
   cursor: z
@@ -2429,7 +2439,7 @@ export const zGetSellableQuantityQuery = z.object({
     .regex(/^[A-Za-z0-9.\-]+$/)
     .register(z.globalRegistry, {
       description:
-        "종목 심볼. KRX: 6자리 숫자 (예: 005930), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.",
+        "종목 심볼. KRX: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL). 영문 대/소문자, 숫자, '.', '-' 만 허용한다.",
     }),
 });
 

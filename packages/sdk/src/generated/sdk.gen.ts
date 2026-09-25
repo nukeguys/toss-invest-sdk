@@ -297,6 +297,8 @@ export class TossInvestApi extends HeyApiClient {
    *
    * 종목의 캔들(OHLCV) 차트 데이터를 조회합니다. 최대 200개 봉을 반환합니다.
    *
+   * 봉은 최신순(`timestamp` 내림차순)으로 정렬됩니다 — 배열의 첫 요소가 가장 최근 봉, 마지막 요소가 가장 오래된 봉입니다.
+   *
    * **Rate Limits Group**: `MARKET_DATA_CHART`
    *
    */
@@ -472,7 +474,7 @@ export class TossInvestApi extends HeyApiClient {
    * - 국내(KR) 종목만 지원합니다. 다른 시장의 종목은 400 `unsupported-market` 으로 응답합니다.
    * - 모든 금액은 원화(KRW)이며, 별도의 통화 필드는 제공하지 않습니다.
    * - 비중(`shortSellingVolumeRate`·`shortSellingAmountRate`)의 분모는 정규장 외 세션
-   * (장전·장후·시간외단일가)을 포함한 해당 일자 누적 거래량·거래대금입니다.
+   * (장전·장후 시간외종가, 애프터마켓)을 포함한 해당 일자 누적 거래량·거래대금입니다.
    * 분모 데이터가 없는 날짜는 비중이 null, 분모가 0 이면 `0` 입니다.
    * - 다음 페이지는 응답의 `nextUntil` 값을 `until` 파라미터로 전달해 조회합니다.
    *
@@ -591,7 +593,7 @@ export class TossInvestApi extends HeyApiClient {
   /**
    * 국내 장 운영 정보 조회
    *
-   * 국내 시장의 거래 가능 시간을 조회합니다. 통합 모드 (KRX+NXT) 기준이며, 특수장(시간외종가/시간외단일가)은 제외됩니다. 전일/당일/익일 3영업일 정보를 반환합니다. 모든 시간은 KST(+09:00) 기준.
+   * 국내 시장의 거래 가능 시간을 조회합니다. 통합 모드 (KRX+NXT) 기준이며, 장전/장후 시간외종가는 제외됩니다. 전일/당일/익일 3영업일 정보를 반환합니다. 모든 시간은 KST(+09:00) 기준.
    *
    * **Rate Limits Group**: `MARKET_INFO`
    *
@@ -693,6 +695,8 @@ export class TossInvestApi extends HeyApiClient {
    * 시장 지표 캔들 차트 조회
    *
    * 시장 지표(국내 지수·국채)의 캔들(OHLCV) 차트 데이터를 조회합니다. 최대 200개 봉을 반환합니다.
+   *
+   * 봉은 최신순(`timestamp` 내림차순)으로 정렬됩니다 — 배열의 첫 요소가 가장 최근 봉, 마지막 요소가 가장 오래된 봉입니다.
    *
    * 지원 심볼은 그룹 상단 **Market Indicators** 설명의 심볼 카탈로그(8종)와 동일하며, 카탈로그에 없는 심볼은
    * 400 `unsupported-symbol` 로 응답합니다. 개별 종목의 캔들은 `GET /api/v1/candles` 를 사용하세요.
@@ -818,6 +822,11 @@ export class TossInvestApi extends HeyApiClient {
    * - 종료된 주문: `CLOSED` -- FILLED, CANCELED, REJECTED, REPLACED 등 종료 상태 주문을 반환합니다.
    *
    * symbol을 지정하면 해당 종목의 주문만 필터링하여 반환합니다.
+   *
+   * **조회 범위:**
+   * Open API 가 지원하는 호가 유형(지정가 · 시장가 · 장마감지정가)으로 접수된 주문만 반환합니다.
+   * 장후시간외 종가 · 장전시간외 종가 등 Open API 로 주문할 수 없는 호가 유형의 주문은
+   * `OPEN`·`CLOSED` 목록과 주문 상세 조회 모두에서 조회되지 않습니다.
    *
    * **페이징 동작:**
    * - `status=OPEN`: 모든 대기 중 주문을 전량 반환합니다. `limit`, `cursor` 는 무시되며, `from`/`to` 만 주문 생성일(`orderedAt`, KST 기준) 범위 필터로 적용됩니다 (미지정 시 전체 기간).
