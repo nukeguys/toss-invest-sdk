@@ -13,7 +13,8 @@
     "test:live": "pnpm --filter @wi9ine/toss-invest-sdk test:live",
     "mcp:build": "pnpm build",
     "mcp:test": "pnpm build && pnpm --filter @wi9ine/toss-invest-mcp test",
-    "mcp:inspect": "pnpm build && pnpm dlx @modelcontextprotocol/inspector node --env-file=.env apps/mcp/dist/stdio.js"
+    "mcp:inspect": "pnpm build && pnpm dlx @modelcontextprotocol/inspector node --env-file=.env apps/mcp/dist/stdio.js",
+    "mcp:publish": "pnpm --filter @wi9ine/toss-invest-mcp publish:registry"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.6"

@@ -235,6 +235,18 @@ pnpm mcp:inspect
 The host examples above store credentials in their configuration files. Keep those files private
 and do not commit project-level MCP configuration containing real credentials.
 
+## Publishing
+
+Publish the npm package first, then register the same version in the
+[MCP Registry](https://registry.modelcontextprotocol.io) with
+[`mcp-publisher`](https://github.com/modelcontextprotocol/registry). The registry publish reads
+`apps/mcp/server.json` and requires a prior `mcp-publisher login github`.
+
+```sh
+pnpm --filter @wi9ine/toss-invest-mcp publish
+pnpm mcp:publish
+```
+
 ## Safety notes
 
 - The MCP server is local-only and starts one authenticated Toss client per host process.

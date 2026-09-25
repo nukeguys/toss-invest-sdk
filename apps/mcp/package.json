@@ -31,7 +31,8 @@
     "build": "tsc -p tsconfig.json",
     "prepack": "pnpm build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test"
+    "test": "node --test",
+    "publish:registry": "mcp-publisher publish"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.0.0",
