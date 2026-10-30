@@ -1045,6 +1045,70 @@ export type RankingPrice = {
   changeRate?: string | null;
 };
 
+export type InvestorTradingRankingResponse = {
+  /**
+   * 외국인
+   */
+  foreigner: InvestorNetTradingRanking;
+  /**
+   * 기관
+   */
+  institution: InvestorNetTradingRanking;
+  /**
+   * 개인
+   */
+  individual: InvestorNetTradingRanking;
+};
+
+export type InvestorNetTradingRanking = {
+  /**
+   * 해당 투자자 랭킹의 마지막 갱신 시각입니다. 투자자마다 갱신 시점이 달라 서로 다를 수 있습니다.
+   * 데이터를 제공할 수 없는 경우 null 입니다.
+   *
+   */
+  rankedAt: string | null;
+  /**
+   * 순매수 상위 종목 (`netBuyAmount` 내림차순). 항목 수는 `count` 이하일 수 있습니다.
+   */
+  netBuyRankings: Array<NetBuyRankingItem>;
+  /**
+   * 순매도 상위 종목 (`netSellAmount` 내림차순). 항목 수는 `count` 이하일 수 있습니다.
+   */
+  netSellRankings: Array<NetSellRankingItem>;
+};
+
+export type NetBuyRankingItem = {
+  /**
+   * 순위. 1부터 시작
+   */
+  rank: number;
+  /**
+   * 종목 심볼. 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0167A0)
+   */
+  symbol: string;
+  currency: Currency;
+  /**
+   * 순매수 거래액 (매수 − 매도). 원화(KRW) 정수, 항상 양수
+   */
+  netBuyAmount: string;
+};
+
+export type NetSellRankingItem = {
+  /**
+   * 순위. 1부터 시작
+   */
+  rank: number;
+  /**
+   * 종목 심볼. 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0167A0)
+   */
+  symbol: string;
+  currency: Currency;
+  /**
+   * 순매도 거래액 (매도 − 매수). 원화(KRW) 정수, 항상 양수
+   */
+  netSellAmount: string;
+};
+
 export type MarketIndicatorPriceResponse = {
   /**
    * 시장 지표 심볼. `GET /api/v1/market-indicators/prices` 의 심볼 카탈로그 참조
@@ -1193,6 +1257,176 @@ export type InstitutionTradingBreakdown = {
    * 연기금
    */
   pensionFund: InvestorTradingAmount;
+};
+
+export type SectorsResponse = {
+  /**
+   * 섹터 목록 (`depth` 오름차순, 같은 depth 안에서는 `sectorId` 오름차순)
+   */
+  sectors: Array<Sector>;
+};
+
+export type Sector = {
+  /**
+   * 섹터 식별자. 다른 섹터 API 의 경로 파라미터 `sectorId` 로 사용합니다.
+   */
+  sectorId: string;
+  /**
+   * 섹터명
+   */
+  name: string;
+  /**
+   * 계층 깊이. 0 = 대분류, 1 = 중분류, 2 = 소분류
+   */
+  depth: number;
+  /**
+   * 상위 섹터의 `sectorId`. 대분류(`depth` 0)는 null
+   */
+  parentSectorId: string | null;
+};
+
+export type SectorDetailResponse = {
+  /**
+   * 섹터 식별자
+   */
+  sectorId: string;
+  /**
+   * 섹터명
+   */
+  name: string;
+  /**
+   * 계층 깊이. 0 = 대분류, 1 = 중분류, 2 = 소분류
+   */
+  depth: number;
+  /**
+   * 상위 섹터의 `sectorId`. 대분류(`depth` 0)는 null
+   */
+  parentSectorId: string | null;
+  /**
+   * 섹터 한 줄 요약. 등록되지 않은 섹터는 null
+   */
+  summary: string | null;
+  performance: SectorPerformance;
+};
+
+/**
+ * 요청한 `marketCountry` 시장 기준 기간별 등락률
+ */
+export type SectorPerformance = {
+  /**
+   * 기간별 등락률. `duration` 순서(`1d` → `1y`)로 항상 6건
+   */
+  changeRates: Array<SectorChangeRate>;
+};
+
+export type SectorChangeRate = {
+  /**
+   * 등락률 산정 기간. 모든 기간은 거래일 기준입니다.
+   * - `1d`: 1일
+   * - `1w`: 1주
+   * - `1mo`: 1개월
+   * - `3mo`: 3개월
+   * - `6mo`: 6개월
+   * - `1y`: 1년
+   *
+   */
+  duration: '1d' | '1w' | '1mo' | '3mo' | '6mo' | '1y';
+  /**
+   * 기간 등락률, 소수비율 (`0.0179` = 1.79%).
+   * 해당 기간의 데이터가 없으면 null 입니다.
+   *
+   */
+  changeRate: string | null;
+};
+
+export type SectorStocksResponse = {
+  /**
+   * 구성 주식 목록 (시가총액 내림차순). 하위 섹터의 종목을 포함합니다. 해당 시장에 구성 주식이 없으면 빈 배열.
+   */
+  stocks: Array<SectorStock>;
+};
+
+export type SectorStock = {
+  /**
+   * 종목 심볼. KR: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL)
+   */
+  symbol: string;
+  /**
+   * 종목명
+   */
+  name: string;
+  /**
+   * 당일 누적 거래량 (주). 시세 데이터가 없으면 null
+   */
+  volume: string | null;
+  /**
+   * 당일 누적 거래대금. 통화는 `currency` 를 따르며 US 종목도 원화(KRW) 환산값입니다. 시세 데이터가 없으면 null
+   */
+  tradingAmount: string | null;
+  /**
+   * 시가총액 (매일 갱신). 통화는 `currency` 를 따르며 US 종목도 원화(KRW) 환산값입니다. 데이터가 없으면 null
+   */
+  marketCapitalization: string | null;
+  currency: Currency;
+};
+
+export type SectorEtfsResponse = {
+  /**
+   * 관련 ETF 목록 (직전 분기 시가총액이 큰 순서, 시가총액 정보가 없는 ETF 는 뒤). 해당 시장에 관련 ETF 가 없으면 빈 배열.
+   */
+  etfs: Array<SectorEtf>;
+};
+
+export type SectorEtf = {
+  /**
+   * ETF 심볼. KR: 6자리 종목코드 (예: 091160), US: 영문 티커 (예: SOXX)
+   */
+  symbol: string;
+  /**
+   * ETF 명
+   */
+  name: string;
+};
+
+export type SectorRankingResponse = {
+  /**
+   * 섹터 랭킹 목록 (순위 오름차순, 최대 100건). 데이터가 없으면 빈 배열.
+   */
+  rankings: Array<SectorRankingItem>;
+};
+
+export type SectorRankingItem = {
+  /**
+   * 순위. 1부터 시작
+   */
+  rank: number;
+  /**
+   * 섹터 식별자
+   */
+  sectorId: string;
+  /**
+   * 섹터명
+   */
+  name: string;
+  /**
+   * `duration` 기간 등락률, 소수비율 (`0.0179` = 1.79%). `TOP_GAINERS` 의 랭킹 기준값입니다.
+   * 항상 값이 있으며, 데이터가 없는 섹터는 `0` 입니다.
+   *
+   */
+  changeRate: string | null;
+  /**
+   * `duration` 누적 거래대금. `MARKET_TRADING_AMOUNT` 의 랭킹 기준값입니다.
+   * 통화는 `currency` 를 따르며 US 도 원화(KRW) 환산값입니다. 데이터가 없으면 null 입니다.
+   *
+   */
+  tradingAmount: string | null;
+  /**
+   * 이 섹터에 속한 종목들의 시가총액 합계. 하위 섹터는 포함하지 않습니다.
+   * 통화는 `currency` 를 따르며 US 도 원화(KRW) 환산값입니다. 데이터가 없으면 null 입니다.
+   *
+   */
+  marketCapitalization: string | null;
+  currency: Currency;
 };
 
 export type Account = {
@@ -1590,7 +1824,7 @@ export type ConditionalOrderCreateRequest = {
    */
   clientOrderId?: string;
   /**
-   * 조건주문 만료일 (YYYY-MM-DD, 필수). 만료일까지 조건이 충족되지 않으면 자동 만료됩니다.
+   * 조건주문 만료일 (YYYY-MM-DD, 필수). 오늘로부터 최대 1년까지 지정할 수 있습니다. 만료일까지 조건이 충족되지 않으면 자동 만료됩니다.
    */
   expireDate: string;
   /**
@@ -1628,7 +1862,7 @@ export type ConditionalOrderModifyRequest = {
    */
   orderType: 'LIMIT' | 'MARKET';
   /**
-   * 조건주문 만료일 (수정 시 필수)
+   * 조건주문 만료일 (수정 시 필수). 오늘로부터 최대 1년까지 지정할 수 있습니다.
    */
   expireDate: string;
   /**
@@ -1784,6 +2018,10 @@ export type ConditionalOrderCondition = {
     | 'COMPLETED'
     | 'EXPIRED'
     | 'CANCELED';
+  /**
+   * 매매 유형 (매수/매도). 조건 충족 시 이 유형으로 주문을 냅니다. 등록 요청의 `orderSide` 와 같은 값입니다.
+   */
+  orderSide: 'BUY' | 'SELL';
   /**
    * 이 가격에 닿으면 트리거됩니다.
    * 현재 지원 조건은 항상 값이 존재하나, 향후 수익률(PROFIT_RATE)·추종형 조건은 고정 트리거가가 없어 null 일 수 있습니다.
@@ -2036,7 +2274,9 @@ export type IssueOAuth2TokenData = {
 export type IssueOAuth2TokenErrors = {
   /**
    * 잘못된 요청.
-   * 필수 파라미터 누락, 지원하지 않는 grant_type 등.
+   * 필수 파라미터(`grant_type`, `client_id`, `client_secret`) 누락, 자격증명 형식 오류, 지원하지 않는 grant_type 등.
+   * `error_description` 의 `OAuth 2.0 Parameter: {name}` 은 누락되거나 잘못된 파라미터 이름입니다.
+   * 401 `invalid_client` 와 달리 자격증명 값이 아니라 요청 형식의 문제이므로, 값을 다시 복사하기 전에 요청 본문·헤더를 확인하세요.
    *
    */
   400: OAuth2ErrorResponse;
@@ -3006,6 +3246,48 @@ export type GetRankingsResponses = {
 
 export type GetRankingsResponse = GetRankingsResponses[keyof GetRankingsResponses];
 
+export type GetInvestorTradingRankingsData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * 목록별 조회 수 (최대 100). 투자자별 순매수·순매도 목록에 각각 적용되며, 응답 항목 수는 `count` 이하일 수 있습니다.
+     */
+    count?: number;
+  };
+  url: '/api/v1/rankings/investor-trading';
+};
+
+export type GetInvestorTradingRankingsErrors = {
+  /**
+   * 잘못된 요청
+   */
+  400: ErrorResponse;
+  /**
+   * 요청 한도 초과. 포함 헤더의 의미는 아래 `headers` 정의를 참조합니다.
+   */
+  429: ErrorResponse;
+  /**
+   * 랭킹 조회 중 일시적 오류
+   */
+  500: unknown;
+};
+
+export type GetInvestorTradingRankingsError =
+  GetInvestorTradingRankingsErrors[keyof GetInvestorTradingRankingsErrors];
+
+export type GetInvestorTradingRankingsResponses = {
+  /**
+   * 성공
+   */
+  200: ApiResponse & {
+    result?: InvestorTradingRankingResponse;
+  };
+};
+
+export type GetInvestorTradingRankingsResponse =
+  GetInvestorTradingRankingsResponses[keyof GetInvestorTradingRankingsResponses];
+
 export type GetMarketIndicatorPricesData = {
   body?: never;
   path?: never;
@@ -3168,6 +3450,243 @@ export type GetMarketIndicatorInvestorTradingResponses = {
 
 export type GetMarketIndicatorInvestorTradingResponse =
   GetMarketIndicatorInvestorTradingResponses[keyof GetMarketIndicatorInvestorTradingResponses];
+
+export type ListSectorsData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: '/api/v1/sectors';
+};
+
+export type ListSectorsErrors = {
+  /**
+   * 요청 한도 초과. 포함 헤더의 의미는 아래 `headers` 정의를 참조합니다.
+   */
+  429: ErrorResponse;
+  /**
+   * 섹터 정보 조회 중 일시적 오류
+   */
+  500: ErrorResponse;
+};
+
+export type ListSectorsError = ListSectorsErrors[keyof ListSectorsErrors];
+
+export type ListSectorsResponses = {
+  /**
+   * 성공
+   */
+  200: ApiResponse & {
+    result?: SectorsResponse;
+  };
+};
+
+export type ListSectorsResponse = ListSectorsResponses[keyof ListSectorsResponses];
+
+export type GetSectorRankingsData = {
+  body?: never;
+  path?: never;
+  query: {
+    /**
+     * 랭킹 종류.
+     * - `TOP_GAINERS`: 급상승 (기간 등락률 상위)
+     * - `MARKET_TRADING_AMOUNT`: 시장 거래대금 상위
+     *
+     */
+    type: 'TOP_GAINERS' | 'MARKET_TRADING_AMOUNT';
+    /**
+     * 조회 시장
+     */
+    marketCountry: MarketCountry;
+    /**
+     * 랭킹 산정 기간. 모든 기간은 거래일 기준입니다.
+     * - `1d`: 1일
+     * - `1w`: 1주
+     * - `1mo`: 1개월
+     * - `3mo`: 3개월
+     * - `6mo`: 6개월
+     * - `1y`: 1년
+     *
+     */
+    duration: '1d' | '1w' | '1mo' | '3mo' | '6mo' | '1y';
+  };
+  url: '/api/v1/sectors/rankings';
+};
+
+export type GetSectorRankingsErrors = {
+  /**
+   * 잘못된 요청
+   */
+  400: ErrorResponse;
+  /**
+   * 요청 한도 초과. 포함 헤더의 의미는 아래 `headers` 정의를 참조합니다.
+   */
+  429: ErrorResponse;
+  /**
+   * 섹터 정보 조회 중 일시적 오류
+   */
+  500: ErrorResponse;
+};
+
+export type GetSectorRankingsError = GetSectorRankingsErrors[keyof GetSectorRankingsErrors];
+
+export type GetSectorRankingsResponses = {
+  /**
+   * 성공
+   */
+  200: ApiResponse & {
+    result?: SectorRankingResponse;
+  };
+};
+
+export type GetSectorRankingsResponse =
+  GetSectorRankingsResponses[keyof GetSectorRankingsResponses];
+
+export type GetSectorData = {
+  body?: never;
+  path: {
+    /**
+     * 섹터 식별자. `GET /api/v1/sectors` 응답의 `sectorId` 값을 사용합니다.
+     */
+    sectorId: string;
+  };
+  query: {
+    /**
+     * 등락률(`performance`)의 기준 시장
+     */
+    marketCountry: MarketCountry;
+  };
+  url: '/api/v1/sectors/{sectorId}';
+};
+
+export type GetSectorErrors = {
+  /**
+   * 잘못된 요청
+   */
+  400: ErrorResponse;
+  /**
+   * 섹터를 찾을 수 없음
+   */
+  404: ErrorResponse;
+  /**
+   * 요청 한도 초과. 포함 헤더의 의미는 아래 `headers` 정의를 참조합니다.
+   */
+  429: ErrorResponse;
+  /**
+   * 섹터 정보 조회 중 일시적 오류
+   */
+  500: ErrorResponse;
+};
+
+export type GetSectorError = GetSectorErrors[keyof GetSectorErrors];
+
+export type GetSectorResponses = {
+  /**
+   * 성공
+   */
+  200: ApiResponse & {
+    result?: SectorDetailResponse;
+  };
+};
+
+export type GetSectorResponse = GetSectorResponses[keyof GetSectorResponses];
+
+export type GetSectorStocksData = {
+  body?: never;
+  path: {
+    /**
+     * 섹터 식별자. `GET /api/v1/sectors` 응답의 `sectorId` 값을 사용합니다. 하위 섹터의 종목을 포함합니다.
+     */
+    sectorId: string;
+  };
+  query: {
+    /**
+     * 조회 시장
+     */
+    marketCountry: MarketCountry;
+  };
+  url: '/api/v1/sectors/{sectorId}/stocks';
+};
+
+export type GetSectorStocksErrors = {
+  /**
+   * 잘못된 요청
+   */
+  400: ErrorResponse;
+  /**
+   * 섹터를 찾을 수 없음
+   */
+  404: ErrorResponse;
+  /**
+   * 요청 한도 초과. 포함 헤더의 의미는 아래 `headers` 정의를 참조합니다.
+   */
+  429: ErrorResponse;
+  /**
+   * 섹터 정보 조회 중 일시적 오류
+   */
+  500: ErrorResponse;
+};
+
+export type GetSectorStocksError = GetSectorStocksErrors[keyof GetSectorStocksErrors];
+
+export type GetSectorStocksResponses = {
+  /**
+   * 성공
+   */
+  200: ApiResponse & {
+    result?: SectorStocksResponse;
+  };
+};
+
+export type GetSectorStocksResponse = GetSectorStocksResponses[keyof GetSectorStocksResponses];
+
+export type GetSectorEtfsData = {
+  body?: never;
+  path: {
+    /**
+     * 섹터 식별자. `GET /api/v1/sectors` 응답의 `sectorId` 값을 사용합니다. 하위 섹터는 포함하지 않습니다.
+     */
+    sectorId: string;
+  };
+  query: {
+    /**
+     * 조회 시장 (KR = 국내 상장 ETF, US = 미국 상장 ETF)
+     */
+    marketCountry: MarketCountry;
+  };
+  url: '/api/v1/sectors/{sectorId}/etfs';
+};
+
+export type GetSectorEtfsErrors = {
+  /**
+   * 잘못된 요청
+   */
+  400: ErrorResponse;
+  /**
+   * 섹터를 찾을 수 없음
+   */
+  404: ErrorResponse;
+  /**
+   * 요청 한도 초과. 포함 헤더의 의미는 아래 `headers` 정의를 참조합니다.
+   */
+  429: ErrorResponse;
+  /**
+   * 섹터 정보 조회 중 일시적 오류
+   */
+  500: ErrorResponse;
+};
+
+export type GetSectorEtfsError = GetSectorEtfsErrors[keyof GetSectorEtfsErrors];
+
+export type GetSectorEtfsResponses = {
+  /**
+   * 성공
+   */
+  200: ApiResponse & {
+    result?: SectorEtfsResponse;
+  };
+};
+
+export type GetSectorEtfsResponse = GetSectorEtfsResponses[keyof GetSectorEtfsResponses];
 
 export type GetAccountsData = {
   body?: never;

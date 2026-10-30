@@ -31,6 +31,12 @@ TOSS_CLIENT_ID=... TOSS_CLIENT_SECRET=... npx -y @wi9ine/toss-invest-mcp
 - `toss_get_kr_market_calendar`: Korean market schedule
 - `toss_get_us_market_calendar`: US market schedule
 - `toss_get_rankings`: market and Toss Securities stock rankings
+- `toss_get_investor_trading_rankings`: investor net buying and selling rankings
+- `toss_list_sectors`: sector hierarchy
+- `toss_get_sector_rankings`: sector rankings
+- `toss_get_sector`: sector details and performance
+- `toss_get_sector_stocks`: stocks in a sector
+- `toss_get_sector_etfs`: ETFs associated with a sector
 - `toss_get_market_indicator_prices`: market indicator prices
 - `toss_get_market_indicator_candles`: market indicator candles
 - `toss_get_market_indicator_investor_trading`: KOSPI/KOSDAQ investor trading amounts
@@ -237,12 +243,13 @@ and do not commit project-level MCP configuration containing real credentials.
 
 ## Publishing
 
-Publish the npm package first, then register the same version in the
+Publish the SDK first, then the MCP npm package, and register the same version in the
 [MCP Registry](https://registry.modelcontextprotocol.io) with
 [`mcp-publisher`](https://github.com/modelcontextprotocol/registry). The registry publish reads
 `apps/mcp/server.json` and requires a prior `mcp-publisher login github`.
 
 ```sh
+pnpm --filter @wi9ine/toss-invest-sdk publish
 pnpm --filter @wi9ine/toss-invest-mcp publish
 pnpm mcp:publish
 ```

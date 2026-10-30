@@ -14,6 +14,7 @@ import {
   zGetConditionalOrdersQuery,
   zGetExchangeRateQuery,
   zGetHoldingsQuery,
+  zGetInvestorTradingRankingsQuery,
   zGetKrMarketCalendarQuery,
   zGetMarketIndicatorCandlesPath,
   zGetMarketIndicatorCandlesQuery,
@@ -24,6 +25,13 @@ import {
   zGetOrdersQuery,
   zGetPriceLimitQuery,
   zGetRankingsQuery,
+  zGetSectorEtfsPath,
+  zGetSectorEtfsQuery,
+  zGetSectorPath,
+  zGetSectorQuery,
+  zGetSectorRankingsQuery,
+  zGetSectorStocksPath,
+  zGetSectorStocksQuery,
   zGetSellableQuantityQuery,
   zGetStockCreditTradesPath,
   zGetStockCreditTradesQuery,
@@ -267,7 +275,7 @@ export function createTossInvestMcpServer(
   }
 
   const server = new McpServer(
-    { name: 'toss-invest', version: '0.2.1' },
+    { name: 'toss-invest', version: '0.3.0' },
     {
       instructions: allowTrading
         ? '토스증권 조회 및 주문 서버입니다. 계좌 API를 호출하기 전에 toss_list_accounts로 accountSeq를 확인하고, 주문 도구는 사용자의 승인을 받은 경우에만 호출하세요.'
@@ -545,6 +553,87 @@ export function createTossInvestMcpServer(
           query: { count, duration, excludeInvestmentCaution, marketCountry, type },
           throwOnError: true,
         }),
+      ),
+  );
+
+  server.registerTool(
+    'toss_get_investor_trading_rankings',
+    {
+      annotations: readOnly,
+      description: '국내 종목의 투자자별 순매수·순매도 랭킹을 조회합니다.',
+      inputSchema: zGetInvestorTradingRankingsQuery,
+      title: '투자자별 매매 랭킹 조회',
+    },
+    (query) => call(() => client.getInvestorTradingRankings({ query, throwOnError: true })),
+  );
+
+  server.registerTool(
+    'toss_list_sectors',
+    {
+      annotations: readOnly,
+      description: '섹터 목록과 계층을 조회합니다.',
+      inputSchema: z.object({}),
+      title: '섹터 목록 조회',
+    },
+    () => call(() => client.listSectors({ throwOnError: true })),
+  );
+
+  server.registerTool(
+    'toss_get_sector_rankings',
+    {
+      annotations: readOnly,
+      description: '시장과 기간별 섹터 랭킹을 조회합니다.',
+      inputSchema: zGetSectorRankingsQuery,
+      title: '섹터 랭킹 조회',
+    },
+    (query) => call(() => client.getSectorRankings({ query, throwOnError: true })),
+  );
+
+  server.registerTool(
+    'toss_get_sector',
+    {
+      annotations: readOnly,
+      description:
+        '섹터 정보와 기간별 등락률을 조회합니다. 섹터 ID는 toss_list_sectors에서 확인하세요.',
+      inputSchema: z.object({ ...zGetSectorPath.shape, ...zGetSectorQuery.shape }),
+      title: '섹터 상세 조회',
+    },
+    ({ sectorId, marketCountry }) =>
+      call(() =>
+        client.getSector({ path: { sectorId }, query: { marketCountry }, throwOnError: true }),
+      ),
+  );
+
+  server.registerTool(
+    'toss_get_sector_stocks',
+    {
+      annotations: readOnly,
+      description:
+        '하위 섹터를 포함한 구성 주식을 조회합니다. 섹터 ID는 toss_list_sectors에서 확인하세요.',
+      inputSchema: z.object({ ...zGetSectorStocksPath.shape, ...zGetSectorStocksQuery.shape }),
+      title: '섹터 구성 주식 조회',
+    },
+    ({ sectorId, marketCountry }) =>
+      call(() =>
+        client.getSectorStocks({
+          path: { sectorId },
+          query: { marketCountry },
+          throwOnError: true,
+        }),
+      ),
+  );
+
+  server.registerTool(
+    'toss_get_sector_etfs',
+    {
+      annotations: readOnly,
+      description: '해당 섹터의 관련 ETF을 조회합니다. 섹터 ID는 toss_list_sectors에서 확인하세요.',
+      inputSchema: z.object({ ...zGetSectorEtfsPath.shape, ...zGetSectorEtfsQuery.shape }),
+      title: '섹터 관련 ETF 조회',
+    },
+    ({ sectorId, marketCountry }) =>
+      call(() =>
+        client.getSectorEtfs({ path: { sectorId }, query: { marketCountry }, throwOnError: true }),
       ),
   );
 

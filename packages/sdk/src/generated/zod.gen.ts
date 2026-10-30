@@ -820,6 +820,50 @@ export const zRankingResponse = z.object({
   }),
 });
 
+export const zNetBuyRankingItem = z.object({
+  rank: z.int().register(z.globalRegistry, {
+    description: '순위. 1부터 시작',
+  }),
+  symbol: z.string().register(z.globalRegistry, {
+    description: '종목 심볼. 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0167A0)',
+  }),
+  currency: zCurrency,
+  netBuyAmount: z.string().max(30).register(z.globalRegistry, {
+    description: '순매수 거래액 (매수 − 매도). 원화(KRW) 정수, 항상 양수',
+  }),
+});
+
+export const zNetSellRankingItem = z.object({
+  rank: z.int().register(z.globalRegistry, {
+    description: '순위. 1부터 시작',
+  }),
+  symbol: z.string().register(z.globalRegistry, {
+    description: '종목 심볼. 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0167A0)',
+  }),
+  currency: zCurrency,
+  netSellAmount: z.string().max(30).register(z.globalRegistry, {
+    description: '순매도 거래액 (매도 − 매수). 원화(KRW) 정수, 항상 양수',
+  }),
+});
+
+export const zInvestorNetTradingRanking = z.object({
+  rankedAt: z.iso.datetime({ offset: true }).nullable(),
+  netBuyRankings: z.array(zNetBuyRankingItem).register(z.globalRegistry, {
+    description:
+      '순매수 상위 종목 (`netBuyAmount` 내림차순). 항목 수는 `count` 이하일 수 있습니다.',
+  }),
+  netSellRankings: z.array(zNetSellRankingItem).register(z.globalRegistry, {
+    description:
+      '순매도 상위 종목 (`netSellAmount` 내림차순). 항목 수는 `count` 이하일 수 있습니다.',
+  }),
+});
+
+export const zInvestorTradingRankingResponse = z.object({
+  foreigner: zInvestorNetTradingRanking,
+  institution: zInvestorNetTradingRanking,
+  individual: zInvestorNetTradingRanking,
+});
+
 export const zMarketIndicatorPriceResponse = z.object({
   symbol: z.string().register(z.globalRegistry, {
     description: '시장 지표 심볼. `GET /api/v1/market-indicators/prices` 의 심볼 카탈로그 참조',
@@ -915,6 +959,120 @@ export const zInvestorTradingResponse = z.object({
   nextUntil: z.iso.date().nullish(),
   records: z.array(zInvestorTradingRecord).register(z.globalRegistry, {
     description: '집계 기간별 매매대금 기록 목록 (최신순). 데이터가 없으면 빈 배열',
+  }),
+});
+
+export const zSector = z.object({
+  sectorId: z.string().register(z.globalRegistry, {
+    description: '섹터 식별자. 다른 섹터 API 의 경로 파라미터 `sectorId` 로 사용합니다.',
+  }),
+  name: z.string().register(z.globalRegistry, {
+    description: '섹터명',
+  }),
+  depth: z.int().register(z.globalRegistry, {
+    description: '계층 깊이. 0 = 대분류, 1 = 중분류, 2 = 소분류',
+  }),
+  parentSectorId: z.string().nullable(),
+});
+
+export const zSectorsResponse = z.object({
+  sectors: z.array(zSector).register(z.globalRegistry, {
+    description: '섹터 목록 (`depth` 오름차순, 같은 depth 안에서는 `sectorId` 오름차순)',
+  }),
+});
+
+export const zSectorChangeRate = z.object({
+  duration: z.enum(['1d', '1w', '1mo', '3mo', '6mo', '1y']).register(z.globalRegistry, {
+    description:
+      '등락률 산정 기간. 모든 기간은 거래일 기준입니다.\n- `1d`: 1일\n- `1w`: 1주\n- `1mo`: 1개월\n- `3mo`: 3개월\n- `6mo`: 6개월\n- `1y`: 1년\n',
+  }),
+  changeRate: z.string().max(30).nullable(),
+});
+
+/**
+ * 요청한 `marketCountry` 시장 기준 기간별 등락률
+ */
+export const zSectorPerformance = z
+  .object({
+    changeRates: z.array(zSectorChangeRate).register(z.globalRegistry, {
+      description: '기간별 등락률. `duration` 순서(`1d` → `1y`)로 항상 6건',
+    }),
+  })
+  .register(z.globalRegistry, {
+    description: '요청한 `marketCountry` 시장 기준 기간별 등락률',
+  });
+
+export const zSectorDetailResponse = z.object({
+  sectorId: z.string().register(z.globalRegistry, {
+    description: '섹터 식별자',
+  }),
+  name: z.string().register(z.globalRegistry, {
+    description: '섹터명',
+  }),
+  depth: z.int().register(z.globalRegistry, {
+    description: '계층 깊이. 0 = 대분류, 1 = 중분류, 2 = 소분류',
+  }),
+  parentSectorId: z.string().nullable(),
+  summary: z.string().nullable(),
+  performance: zSectorPerformance,
+});
+
+export const zSectorStock = z.object({
+  symbol: z.string().register(z.globalRegistry, {
+    description:
+      '종목 심볼. KR: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 영문 티커 (예: AAPL)',
+  }),
+  name: z.string().register(z.globalRegistry, {
+    description: '종목명',
+  }),
+  volume: z.string().max(30).nullable(),
+  tradingAmount: z.string().max(30).nullable(),
+  marketCapitalization: z.string().max(30).nullable(),
+  currency: zCurrency,
+});
+
+export const zSectorStocksResponse = z.object({
+  stocks: z.array(zSectorStock).register(z.globalRegistry, {
+    description:
+      '구성 주식 목록 (시가총액 내림차순). 하위 섹터의 종목을 포함합니다. 해당 시장에 구성 주식이 없으면 빈 배열.',
+  }),
+});
+
+export const zSectorEtf = z.object({
+  symbol: z.string().register(z.globalRegistry, {
+    description: 'ETF 심볼. KR: 6자리 종목코드 (예: 091160), US: 영문 티커 (예: SOXX)',
+  }),
+  name: z.string().register(z.globalRegistry, {
+    description: 'ETF 명',
+  }),
+});
+
+export const zSectorEtfsResponse = z.object({
+  etfs: z.array(zSectorEtf).register(z.globalRegistry, {
+    description:
+      '관련 ETF 목록 (직전 분기 시가총액이 큰 순서, 시가총액 정보가 없는 ETF 는 뒤). 해당 시장에 관련 ETF 가 없으면 빈 배열.',
+  }),
+});
+
+export const zSectorRankingItem = z.object({
+  rank: z.int().register(z.globalRegistry, {
+    description: '순위. 1부터 시작',
+  }),
+  sectorId: z.string().register(z.globalRegistry, {
+    description: '섹터 식별자',
+  }),
+  name: z.string().register(z.globalRegistry, {
+    description: '섹터명',
+  }),
+  changeRate: z.string().max(30).nullable(),
+  tradingAmount: z.string().max(30).nullable(),
+  marketCapitalization: z.string().max(30).nullable(),
+  currency: zCurrency,
+});
+
+export const zSectorRankingResponse = z.object({
+  rankings: z.array(zSectorRankingItem).register(z.globalRegistry, {
+    description: '섹터 랭킹 목록 (순위 오름차순, 최대 100건). 데이터가 없으면 빈 배열.',
   }),
 });
 
@@ -1324,7 +1482,7 @@ export const zConditionalOrderCreateRequest = z
       .optional(),
     expireDate: z.iso.date().register(z.globalRegistry, {
       description:
-        '조건주문 만료일 (YYYY-MM-DD, 필수). 만료일까지 조건이 충족되지 않으면 자동 만료됩니다.',
+        '조건주문 만료일 (YYYY-MM-DD, 필수). 오늘로부터 최대 1년까지 지정할 수 있습니다. 만료일까지 조건이 충족되지 않으면 자동 만료됩니다.',
     }),
     first: zConditionRequest,
     second: zConditionRequest.optional(),
@@ -1364,7 +1522,7 @@ export const zConditionalOrderModifyRequest = z
         '호가유형 (그룹 공통). LIMIT(지정가)/MARKET(시장가). OCO/OTO 는 지정가만 지원합니다.',
     }),
     expireDate: z.iso.date().register(z.globalRegistry, {
-      description: '조건주문 만료일 (수정 시 필수)',
+      description: '조건주문 만료일 (수정 시 필수). 오늘로부터 최대 1년까지 지정할 수 있습니다.',
     }),
     first: zConditionRequest,
     second: zConditionRequest.optional(),
@@ -1414,6 +1572,10 @@ export const zConditionalOrderCondition = z.object({
       description:
         '조건(leg) 단위 상태. 최상위 조건주문 `status` 와 달리 leg 전용인 `HOLDING`·`CANCELED` 를 포함합니다.\n- `HOLDING`: 선행 조건(OTO first) 체결 전 대기 (leg 전용)\n- `CANCELED`: 취소됨 (완료된 OCO 에서 자동취소된 반대편 조건)\n',
     }),
+  orderSide: z.enum(['BUY', 'SELL']).register(z.globalRegistry, {
+    description:
+      '매매 유형 (매수/매도). 조건 충족 시 이 유형으로 주문을 냅니다. 등록 요청의 `orderSide` 와 같은 값입니다.',
+  }),
   triggerPrice: z.string().nullish(),
   targetProfitRate: z.string().nullish(),
   orderPrice: z.string().nullish(),
@@ -2029,6 +2191,19 @@ export const zGetRankingsQuery = z.object({
     .default(100),
 });
 
+export const zGetInvestorTradingRankingsQuery = z.object({
+  count: z
+    .int()
+    .gte(1)
+    .lte(100)
+    .register(z.globalRegistry, {
+      description:
+        '목록별 조회 수 (최대 100). 투자자별 순매수·순매도 목록에 각각 적용되며, 응답 항목 수는 `count` 이하일 수 있습니다.',
+    })
+    .optional()
+    .default(100),
+});
+
 export const zGetMarketIndicatorPricesQuery = z.object({
   symbols: z
     .string()
@@ -2098,6 +2273,59 @@ export const zGetMarketIndicatorInvestorTradingQuery = z.object({
         '조회 기준일 (inclusive, `YYYY-MM-DD`). 이 날짜까지의 데이터를 최신순으로 `count` 개 반환합니다.\n미지정 시 가장 최신 데이터부터 반환. 다음 페이지 요청 시 이전 응답의 `nextUntil` 값을 그대로 전달합니다.\n',
     })
     .optional(),
+});
+
+export const zGetSectorRankingsQuery = z.object({
+  type: z.enum(['TOP_GAINERS', 'MARKET_TRADING_AMOUNT']).register(z.globalRegistry, {
+    description:
+      '랭킹 종류.\n- `TOP_GAINERS`: 급상승 (기간 등락률 상위)\n- `MARKET_TRADING_AMOUNT`: 시장 거래대금 상위\n',
+  }),
+  marketCountry: zMarketCountry,
+  duration: z.enum(['1d', '1w', '1mo', '3mo', '6mo', '1y']).register(z.globalRegistry, {
+    description:
+      '랭킹 산정 기간. 모든 기간은 거래일 기준입니다.\n- `1d`: 1일\n- `1w`: 1주\n- `1mo`: 1개월\n- `3mo`: 3개월\n- `6mo`: 6개월\n- `1y`: 1년\n',
+  }),
+});
+
+export const zGetSectorPath = z.object({
+  sectorId: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{1,40}$/)
+    .register(z.globalRegistry, {
+      description: '섹터 식별자. `GET /api/v1/sectors` 응답의 `sectorId` 값을 사용합니다.',
+    }),
+});
+
+export const zGetSectorQuery = z.object({
+  marketCountry: zMarketCountry,
+});
+
+export const zGetSectorStocksPath = z.object({
+  sectorId: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{1,40}$/)
+    .register(z.globalRegistry, {
+      description:
+        '섹터 식별자. `GET /api/v1/sectors` 응답의 `sectorId` 값을 사용합니다. 하위 섹터의 종목을 포함합니다.',
+    }),
+});
+
+export const zGetSectorStocksQuery = z.object({
+  marketCountry: zMarketCountry,
+});
+
+export const zGetSectorEtfsPath = z.object({
+  sectorId: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{1,40}$/)
+    .register(z.globalRegistry, {
+      description:
+        '섹터 식별자. `GET /api/v1/sectors` 응답의 `sectorId` 값을 사용합니다. 하위 섹터는 포함하지 않습니다.',
+    }),
+});
+
+export const zGetSectorEtfsQuery = z.object({
+  marketCountry: zMarketCountry,
 });
 
 export const zGetHoldingsHeaders = z.object({

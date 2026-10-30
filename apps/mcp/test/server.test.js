@@ -23,6 +23,12 @@ const readTools = [
   'toss_get_kr_market_calendar',
   'toss_get_us_market_calendar',
   'toss_get_rankings',
+  'toss_get_investor_trading_rankings',
+  'toss_list_sectors',
+  'toss_get_sector_rankings',
+  'toss_get_sector',
+  'toss_get_sector_stocks',
+  'toss_get_sector_etfs',
   'toss_get_market_indicator_prices',
   'toss_get_market_indicator_candles',
   'toss_get_market_indicator_investor_trading',
@@ -99,6 +105,56 @@ test('exposes read tools by default and maps their arguments to the SDK', async 
       },
     ],
   ]);
+});
+
+test('maps sector and investor ranking tools to the SDK', async (t) => {
+  const calls = [];
+  const sdk = new Proxy(
+    {},
+    {
+      get: (_, method) => async (options) => {
+        calls.push([method, options]);
+        return { data: { result: [] } };
+      },
+    },
+  );
+  const client = await connect(t, sdk);
+  const cases = [
+    [
+      'toss_get_investor_trading_rankings',
+      { count: 5 },
+      'getInvestorTradingRankings',
+      { query: { count: 5 }, throwOnError: true },
+    ],
+    ['toss_list_sectors', {}, 'listSectors', { throwOnError: true }],
+    [
+      'toss_get_sector_rankings',
+      { type: 'TOP_GAINERS', marketCountry: 'KR', duration: '1d' },
+      'getSectorRankings',
+      { query: { type: 'TOP_GAINERS', marketCountry: 'KR', duration: '1d' }, throwOnError: true },
+    ],
+    ...[
+      ['sector', 'getSector'],
+      ['sector_stocks', 'getSectorStocks'],
+      ['sector_etfs', 'getSectorEtfs'],
+    ].map(([tool, method]) => [
+      `toss_get_${tool}`,
+      { sectorId: '123', marketCountry: 'KR' },
+      method,
+      { path: { sectorId: '123' }, query: { marketCountry: 'KR' }, throwOnError: true },
+    ]),
+  ];
+  for (const [name, args, method, options] of cases) {
+    const result = await client.callTool({ name, arguments: args });
+    assert.notEqual(result.isError, true);
+    assert.deepEqual(calls.at(-1), [method, options]);
+  }
+  const invalid = await client.callTool({
+    name: 'toss_get_sector',
+    arguments: { sectorId: '../', marketCountry: 'KR' },
+  });
+  assert.equal(invalid.isError, true);
+  assert.equal(calls.length, cases.length);
 });
 
 test('exposes trading tools only when enabled and validates order input', async (t) => {

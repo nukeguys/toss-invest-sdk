@@ -46,6 +46,9 @@ import type {
   GetHoldingsData,
   GetHoldingsErrors,
   GetHoldingsResponses,
+  GetInvestorTradingRankingsData,
+  GetInvestorTradingRankingsErrors,
+  GetInvestorTradingRankingsResponses,
   GetKrMarketCalendarData,
   GetKrMarketCalendarErrors,
   GetKrMarketCalendarResponses,
@@ -76,6 +79,18 @@ import type {
   GetRankingsData,
   GetRankingsErrors,
   GetRankingsResponses,
+  GetSectorData,
+  GetSectorErrors,
+  GetSectorEtfsData,
+  GetSectorEtfsErrors,
+  GetSectorEtfsResponses,
+  GetSectorRankingsData,
+  GetSectorRankingsErrors,
+  GetSectorRankingsResponses,
+  GetSectorResponses,
+  GetSectorStocksData,
+  GetSectorStocksErrors,
+  GetSectorStocksResponses,
   GetSellableQuantityData,
   GetSellableQuantityErrors,
   GetSellableQuantityResponses,
@@ -109,6 +124,9 @@ import type {
   IssueOAuth2TokenData,
   IssueOAuth2TokenErrors,
   IssueOAuth2TokenResponses,
+  ListSectorsData,
+  ListSectorsErrors,
+  ListSectorsResponses,
   ListStocksData,
   ListStocksErrors,
   ListStocksResponses,
@@ -663,6 +681,45 @@ export class TossInvestApi extends HeyApiClient {
   }
 
   /**
+   * 투자자별 순매수·순매도 랭킹 조회
+   *
+   * 국내(KR) 종목의 외국인·기관·개인 순매수 상위와 순매도 상위 종목을 한 번에 조회합니다.
+   * 투자자별로 순매수(`netBuyRankings`)·순매도(`netSellRankings`) 목록을 거래액 순으로 최대 100위까지 제공합니다.
+   *
+   * - 대상은 국내(KR) 종목이며 ETF 를 포함합니다. 순매수·순매도 거래액은 KRX·NXT 통합 기준입니다.
+   * - 거래액은 원화(KRW) 정수이며 항상 양수입니다. `netBuyAmount` 는 매수 거래액에서 매도 거래액을, `netSellAmount` 는 매도 거래액에서 매수 거래액을 뺀 값입니다.
+   * - `count` 는 투자자별 순매수·순매도 목록에 각각 적용됩니다. 응답 항목 수는 `count` 보다 적을 수 있습니다.
+   * - 시세(현재가·등락률)는 포함하지 않습니다. 필요하면 응답의 `symbol` 로 `GET /api/v1/prices` 를 조회하세요.
+   *
+   * **데이터 적시성**: 최근 영업일 기준으로만 제공하며 과거 날짜는 조회할 수 없습니다.
+   * 투자자마다 갱신 시점이 달라 `rankedAt` 이 서로 다를 수 있습니다.
+   * - 외국인·기관은 장중에 잠정치로 제공되고, 개인은 정규장 종료 후 제공됩니다. 정규장 종료 전까지 개인은 직전 영업일 기준입니다.
+   * - 정규장 종료 후에도 NXT 거래 반영으로 저녁(20시경)까지 값이 바뀔 수 있습니다.
+   * - 조회 시점에 따라 이전 시각 기준 데이터가 제공될 수 있으므로, 기준 시각은 `rankedAt` 으로 확인하세요.
+   * 데이터를 제공할 수 없는 경우 `rankedAt` 은 null 이며, 목록이 비어 있을 수 있습니다.
+   *
+   * **Rate Limits Group**: `RANKING`
+   *
+   */
+  public getInvestorTradingRankings<ThrowOnError extends boolean = false>(
+    options?: Options<GetInvestorTradingRankingsData, ThrowOnError>,
+  ): RequestResult<
+    GetInvestorTradingRankingsResponses,
+    GetInvestorTradingRankingsErrors,
+    ThrowOnError
+  > {
+    return (options?.client ?? this.client).get<
+      GetInvestorTradingRankingsResponses,
+      GetInvestorTradingRankingsErrors,
+      ThrowOnError
+    >({
+      security: [{ scheme: 'bearer', type: 'http' }],
+      url: '/api/v1/rankings/investor-trading',
+      ...options,
+    });
+  }
+
+  /**
    * 시장 지표 현재가 조회
    *
    * 시장 지표(국내 지수·국채)의 현재가를 조회합니다. 최대 200건 까지 다건 조회를 지원하며 콤마(`,`)로 구분합니다.
@@ -757,6 +814,138 @@ export class TossInvestApi extends HeyApiClient {
     >({
       security: [{ scheme: 'bearer', type: 'http' }],
       url: '/api/v1/market-indicators/{symbol}/investor-trading',
+      ...options,
+    });
+  }
+
+  /**
+   * 섹터 목록 조회
+   *
+   * 토스증권 섹터 분류 전체를 계층 정보와 함께 한 번에 반환합니다.
+   *
+   * - 섹터는 토스증권 자체 산업 분류로, 한 종목이 여러 섹터에 속할 수 있습니다.
+   * - `depth` 0 = 대분류, 1 = 중분류, 2 = 소분류이며, `parentSectorId` 로 상위 섹터를 따라가면 전체 계층을 만들 수 있습니다.
+   * - 정렬은 `depth` 오름차순, 같은 depth 안에서는 `sectorId` 오름차순(숫자 기준)입니다.
+   * - 자주 바뀌지 않으므로 하루 한 번만 조회해 저장해 두고 쓰는 것을 권장합니다. 다른 섹터 API 의 `sectorId` 입력값은 이 목록에서 확인합니다.
+   *
+   * **Rate Limits Group**: `SECTOR`
+   *
+   */
+  public listSectors<ThrowOnError extends boolean = false>(
+    options?: Options<ListSectorsData, ThrowOnError>,
+  ): RequestResult<ListSectorsResponses, ListSectorsErrors, ThrowOnError> {
+    return (options?.client ?? this.client).get<
+      ListSectorsResponses,
+      ListSectorsErrors,
+      ThrowOnError
+    >({
+      security: [{ scheme: 'bearer', type: 'http' }],
+      url: '/api/v1/sectors',
+      ...options,
+    });
+  }
+
+  /**
+   * 섹터 랭킹 조회
+   *
+   * 지정한 시장(`marketCountry`) · 기간(`duration`) · 기준(`type`)의 섹터 랭킹을 조회합니다. 상위 100위까지 한 번에 제공합니다.
+   *
+   * - 대상은 대분류(`depth` 0)와 중분류(`depth` 1) 섹터이며, 소분류(`depth` 2)는 포함되지 않습니다.
+   * - 소속 종목이 너무 적거나 해당 시장·기간의 데이터가 없는 섹터는 랭킹에 나타나지 않습니다.
+   * - `TOP_GAINERS` 는 `changeRate`, `MARKET_TRADING_AMOUNT` 는 `tradingAmount` 가 랭킹 기준값입니다. `tradingAmount` · `marketCapitalization` 은 데이터가 없으면 null 이고, `changeRate` 는 항상 값이 있습니다.
+   * - 금액은 US 도 원화(KRW) 환산값이며 통화는 각 항목의 `currency` 로 표기됩니다.
+   * - 응답 항목 수는 100건보다 적을 수 있고, 데이터가 없는 조합은 에러가 아닌 빈 `rankings` 배열로 응답합니다.
+   *
+   * **Rate Limits Group**: `SECTOR_RANKING`
+   *
+   */
+  public getSectorRankings<ThrowOnError extends boolean = false>(
+    options: Options<GetSectorRankingsData, ThrowOnError>,
+  ): RequestResult<GetSectorRankingsResponses, GetSectorRankingsErrors, ThrowOnError> {
+    return (options.client ?? this.client).get<
+      GetSectorRankingsResponses,
+      GetSectorRankingsErrors,
+      ThrowOnError
+    >({
+      security: [{ scheme: 'bearer', type: 'http' }],
+      url: '/api/v1/sectors/rankings',
+      ...options,
+    });
+  }
+
+  /**
+   * 섹터 상세 조회
+   *
+   * 섹터의 기본 정보(이름 · 계층 · 한 줄 요약)와 지정한 시장(`marketCountry`) 기준 기간별 등락률을 조회합니다.
+   *
+   * - 기본 정보는 시장과 무관하며, `performance.changeRates` 만 `marketCountry` 기준입니다.
+   * - `changeRates` 는 `duration` 순서(`1d` → `1y`)로 항상 6건이며, 데이터가 없는 기간은 `changeRate` 가 null 입니다 (예: 해당 시장에 구성 종목이 없는 섹터).
+   * - 등락률은 소수비율입니다.
+   * - 목록(`GET /api/v1/sectors`)에 없는 `sectorId` 는 404 `sector-not-found` 로 응답합니다.
+   *
+   * **Rate Limits Group**: `SECTOR`
+   *
+   */
+  public getSector<ThrowOnError extends boolean = false>(
+    options: Options<GetSectorData, ThrowOnError>,
+  ): RequestResult<GetSectorResponses, GetSectorErrors, ThrowOnError> {
+    return (options.client ?? this.client).get<GetSectorResponses, GetSectorErrors, ThrowOnError>({
+      security: [{ scheme: 'bearer', type: 'http' }],
+      url: '/api/v1/sectors/{sectorId}',
+      ...options,
+    });
+  }
+
+  /**
+   * 섹터 구성 주식 조회
+   *
+   * 섹터(하위 섹터 포함)에 속한 보통주 전체를 지정한 시장(`marketCountry`) 기준으로 시가총액 내림차순 반환합니다.
+   *
+   * - `volume` · `tradingAmount` 는 당일 누적값이며, 시세가 없는 종목은 null 입니다.
+   * - 금액은 US 종목도 원화(KRW) 환산값이며 통화는 각 항목의 `currency` 로 표기됩니다.
+   * - 상장폐지된 종목은 제외됩니다.
+   * - 목록(`GET /api/v1/sectors`)에 없는 `sectorId` 는 404 `sector-not-found` 로 응답합니다.
+   *
+   * **Rate Limits Group**: `SECTOR`
+   *
+   */
+  public getSectorStocks<ThrowOnError extends boolean = false>(
+    options: Options<GetSectorStocksData, ThrowOnError>,
+  ): RequestResult<GetSectorStocksResponses, GetSectorStocksErrors, ThrowOnError> {
+    return (options.client ?? this.client).get<
+      GetSectorStocksResponses,
+      GetSectorStocksErrors,
+      ThrowOnError
+    >({
+      security: [{ scheme: 'bearer', type: 'http' }],
+      url: '/api/v1/sectors/{sectorId}/stocks',
+      ...options,
+    });
+  }
+
+  /**
+   * 섹터 관련 ETF 조회
+   *
+   * 이 섹터로 분류된 ETF 전체를 지정한 시장(`marketCountry`) 기준으로 반환합니다 (하위 섹터 미포함).
+   *
+   * - 직전 분기 시가총액이 큰 순서이며, 시가총액 정보가 없는 ETF 는 뒤에 옵니다.
+   * - 심볼과 이름만 제공합니다. 시세는 `GET /api/v1/prices`, 종목 기본 정보는 `GET /api/v1/stocks` 를 사용하세요.
+   * - 상장폐지된 ETF 는 제외됩니다.
+   * - 목록(`GET /api/v1/sectors`)에 없는 `sectorId` 는 404 `sector-not-found` 로 응답합니다.
+   *
+   * **Rate Limits Group**: `SECTOR`
+   *
+   */
+  public getSectorEtfs<ThrowOnError extends boolean = false>(
+    options: Options<GetSectorEtfsData, ThrowOnError>,
+  ): RequestResult<GetSectorEtfsResponses, GetSectorEtfsErrors, ThrowOnError> {
+    return (options.client ?? this.client).get<
+      GetSectorEtfsResponses,
+      GetSectorEtfsErrors,
+      ThrowOnError
+    >({
+      security: [{ scheme: 'bearer', type: 'http' }],
+      url: '/api/v1/sectors/{sectorId}/etfs',
       ...options,
     });
   }
@@ -1075,9 +1264,8 @@ export class TossInvestApi extends HeyApiClient {
   /**
    * 조건주문 수정
    *
-   * 조건주문을 수정합니다. 조건주문 전체를 재설정하므로 본문에 `type`·`expireDate`·`first`(필요 시 `second`) 를 모두 전달합니다.
-   * 수량(`quantity`)은 각 감시 조건(`first`/`second`) 안에 입력합니다.
-   * (등록과 달리 `expireDate` 가 필수입니다.) 종목은 `conditionalOrderId` 로 식별되므로 본문에 `symbol` 은 필요 없습니다.
+   * 조건주문을 수정합니다. 조건주문 전체를 재설정하므로 본문에 `type`·`quantity`·`orderType`·`expireDate`·`first`(필요 시 `second`) 를 모두 전달합니다.
+   * 종목은 `conditionalOrderId` 로 식별되므로 본문에 `symbol` 은 필요 없습니다.
    * 본문의 `type` 은 변경 결과 타입이며, 타입 전환(예: SINGLE→OCO)이 허용됩니다. 응답의 `type` 으로 확인하세요.
    *
    * `conditionalOrderId` 로 수정 대상을 식별합니다.
@@ -1085,6 +1273,11 @@ export class TossInvestApi extends HeyApiClient {
    * **주의**: 수정은 기존 조건주문을 취소하고 새 조건주문을 생성하는 방식으로 동작합니다.
    * 따라서 수정 후에는 **새로운 `conditionalOrderId` 가 발급되고 기존 ID 는 무효화**됩니다.
    * 이후 조회·수정·취소에는 반드시 응답으로 반환된 `conditionalOrderId` 를 사용하세요.
+   *
+   * **수정 가능 상태**: 감시 중(`WATCHING`)·일시정지(`PAUSED`) 조건주문만 수정할 수 있습니다.
+   * 조건이 충족되어 주문이 생성 중(`ORDERING`)이거나 주문이 접수된(`ORDERED`) 조건주문, 종료된(`COMPLETED`·`EXPIRED`) 조건주문은
+   * `422 modify-restricted` 로 거절됩니다. 감시 중이라도 조건 충족 여부를 판정하는 중에는 거절될 수 있습니다.
+   * 주문이 접수된 조건주문은 취소한 뒤 새로 생성하세요. 단, 취소해도 이미 접수된 주문은 취소되지 않으므로 필요하면 주문 취소 API 로 함께 취소하세요.
    *
    * **Rate Limits Group**: `CONDITIONAL_ORDER`
    *
