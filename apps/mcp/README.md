@@ -244,10 +244,24 @@ and do not commit project-level MCP configuration containing real credentials.
 
 ## Publishing
 
-Publish the SDK first, then the MCP npm package, and register the same version in the
-[MCP Registry](https://registry.modelcontextprotocol.io) with
-[`mcp-publisher`](https://github.com/modelcontextprotocol/registry). The registry publish reads
-`apps/mcp/server.json` and requires a prior `mcp-publisher login github`.
+The GitHub Actions workflow `.github/workflows/publish.yml` publishes the SDK, MCP package,
+and MCP Registry entry when a `vX.Y.Z` tag is pushed. All package and registry versions must
+match the tag. It can also be run manually from GitHub Actions with an existing release tag,
+which is useful after a partial failure or for a tag pushed before the workflow existed.
+
+Before running it, configure a GitHub Actions trusted publisher for **each** npm package under
+its npm package settings: owner `wi9ine`, repository `toss-invest-sdk`, workflow filename
+`publish.yml`, and allow `npm publish`. Complete the first publish within two days of creating
+the trusted publisher. No npm token or MCP Registry secret is needed. The workflow checks each
+published version before continuing and waits for the MCP package to appear on npm.
+
+For release notifications, create a Slack incoming webhook for the target channel and save its
+URL as the GitHub Actions repository secret `SLACK_WEBHOOK_URL`. The notification includes the
+release tag, result, and workflow run link. A missing or invalid webhook fails the notification
+job without changing the result of the publish job.
+
+For a manual release, publish the SDK first, then the MCP package and Registry entry. The last
+command requires a prior `mcp-publisher login github`:
 
 ```sh
 pnpm --filter @wi9ine/toss-invest-sdk publish

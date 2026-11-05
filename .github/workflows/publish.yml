@@ -1,0 +1,130 @@
+name: Publish
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish (for example v0.4.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      MCP_PUBLISHER_VERSION: v1.8.7
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+      - name: Check release versions
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" = "$(git rev-parse HEAD)"
+          git merge-base --is-ancestor HEAD origin/main
+          node -e '
+            const version = process.env.RELEASE_TAG.slice(1);
+            const sdk = require("./packages/sdk/package.json");
+            const mcp = require("./apps/mcp/package.json");
+            const registry = require("./apps/mcp/server.json");
+            if ([sdk.version, mcp.version, registry.version, registry.packages[0].version].some(v => v !== version)) throw new Error("Release versions do not match tag");
+          '
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: pnpm/action-setup@v6.1.1
+        with:
+          version: 11.15.1
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm test
+      - name: Pack packages
+        run: |
+          mkdir -p "$RUNNER_TEMP/packages"
+          pnpm --filter @wi9ine/toss-invest-sdk pack --pack-destination "$RUNNER_TEMP/packages"
+          pnpm --filter @wi9ine/toss-invest-mcp pack --pack-destination "$RUNNER_TEMP/packages"
+      - name: Publish npm packages
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          for package in sdk mcp; do
+            name="@wi9ine/toss-invest-${package}"
+            url="https://registry.npmjs.org/@wi9ine%2ftoss-invest-${package}/${version}"
+            status=$(curl -fsS -o /dev/null -w '%{http_code}' "$url" || true)
+            if [ "$status" = 200 ]; then
+              echo "$name@$version already published"
+            elif [ "$status" = 404 ]; then
+              npm publish "$RUNNER_TEMP/packages/wi9ine-toss-invest-${package}-${version}.tgz" --access public
+            else
+              echo "npm registry returned HTTP $status for $name@$version" >&2
+              exit 1
+            fi
+            for attempt in {1..30}; do
+              status=$(curl -fsS -o /dev/null -w '%{http_code}' "$url" 2>/dev/null || true)
+              if [ "$status" = 200 ]; then break; fi
+              if [ "$status" != 404 ]; then
+                echo "npm registry returned HTTP $status for $name@$version" >&2
+                exit 1
+              fi
+              sleep 10
+            done
+            if [ "$status" != 200 ]; then
+              echo "$name@$version is not public yet. Check npm for staged releases requiring approval, then rerun this workflow." >&2
+              exit 1
+            fi
+          done
+      - uses: sigstore/cosign-installer@v4.1.3
+      - name: Install MCP publisher
+        run: |
+          set -euo pipefail
+          archive="mcp-publisher_linux_amd64.tar.gz"
+          base="https://github.com/modelcontextprotocol/registry/releases/download/$MCP_PUBLISHER_VERSION"
+          curl -fsSL -o "$archive" "$base/$archive"
+          curl -fsSL -o "$archive.sigstore.json" "$base/$archive.sigstore.json"
+          cosign verify-blob --bundle "$archive.sigstore.json" \
+            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/$MCP_PUBLISHER_VERSION" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com "$archive"
+          tar xzf "$archive" mcp-publisher
+      - name: Publish to MCP Registry
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          url="https://registry.modelcontextprotocol.io/v0.1/servers/io.github.wi9ine%2Ftoss-invest/versions/$version"
+          status=$(curl -sS -o /dev/null -w '%{http_code}' "$url")
+          if [ "$status" = 200 ]; then
+            echo "MCP Registry version $version already published"
+          elif [ "$status" = 404 ]; then
+            ./mcp-publisher login github-oidc
+            ./mcp-publisher publish apps/mcp/server.json
+          else
+            echo "MCP Registry returned HTTP $status" >&2
+            exit 1
+          fi
+
+  notify:
+    needs: publish
+    if: ${{ always() && (needs.publish.result == 'success' || needs.publish.result == 'failure') }}
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@v4.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          errors: true
+          payload: |
+            text: ${{ toJSON(format('Toss SDK 배포 {0} · {1} {2}/{3}/actions/runs/{4}', needs.publish.result, inputs.tag || github.ref_name, github.server_url, github.repository, github.run_id)) }}
