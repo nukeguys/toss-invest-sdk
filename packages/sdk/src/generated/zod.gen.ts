@@ -1763,6 +1763,134 @@ export const zCommission = z.object({
 });
 
 /**
+ * 거래 유형. 요청 `transactionTypes` 와 같은 값 체계입니다.
+ * 매수·매도는 미결제와 결제 완료 내역을 모두 포함하며, 결제 완료 여부는 `settled`로 구분합니다.
+ * - `BUY`: 매수
+ * - `SELL`: 매도
+ * - `SECURITIES_TRANSFER_IN`: 증권 입고 (타사 이관, 주식배당 등)
+ * - `SECURITIES_TRANSFER_OUT`: 증권 출고 (타사 이관, 옵션 만기 청산 등)
+ * - `DEPOSIT`: 현금 입금 (은행 이체, 채권 만기 원리금 등)
+ * - `WITHDRAWAL`: 현금 출금 (은행 이체, 채권 이자 세금 등)
+ * - `EXCHANGE_IN`: 환전으로 받은 통화의 입금
+ * - `EXCHANGE_OUT`: 환전으로 낸 통화의 출금
+ * - `DIVIDEND`: 배당금 입금
+ * - `INTEREST`: 이자 입금 (예탁금이용료, 채권 이자)
+ * - `FEE`: 수수료 출금(외화보관수수료 등). 매매 수수료는 별도 거래가 아닌 매매 거래의 `commission`에 포함됩니다.
+ *
+ * 옵션·채권 거래도 위 유형으로 나오며 상품은 `assetClass` 로 구분합니다.
+ *
+ * 클라이언트는 unknown enum 값을 허용하도록 구현해야 합니다.
+ *
+ */
+export const zTransactionType = z
+  .enum([
+    'BUY',
+    'SELL',
+    'SECURITIES_TRANSFER_IN',
+    'SECURITIES_TRANSFER_OUT',
+    'DEPOSIT',
+    'WITHDRAWAL',
+    'EXCHANGE_IN',
+    'EXCHANGE_OUT',
+    'DIVIDEND',
+    'INTEREST',
+    'FEE',
+  ])
+  .register(z.globalRegistry, {
+    description:
+      '거래 유형. 요청 `transactionTypes` 와 같은 값 체계입니다.\n매수·매도는 미결제와 결제 완료 내역을 모두 포함하며, 결제 완료 여부는 `settled`로 구분합니다.\n- `BUY`: 매수\n- `SELL`: 매도\n- `SECURITIES_TRANSFER_IN`: 증권 입고 (타사 이관, 주식배당 등)\n- `SECURITIES_TRANSFER_OUT`: 증권 출고 (타사 이관, 옵션 만기 청산 등)\n- `DEPOSIT`: 현금 입금 (은행 이체, 채권 만기 원리금 등)\n- `WITHDRAWAL`: 현금 출금 (은행 이체, 채권 이자 세금 등)\n- `EXCHANGE_IN`: 환전으로 받은 통화의 입금\n- `EXCHANGE_OUT`: 환전으로 낸 통화의 출금\n- `DIVIDEND`: 배당금 입금\n- `INTEREST`: 이자 입금 (예탁금이용료, 채권 이자)\n- `FEE`: 수수료 출금(외화보관수수료 등). 매매 수수료는 별도 거래가 아닌 매매 거래의 `commission`에 포함됩니다.\n\n옵션·채권 거래도 위 유형으로 나오며 상품은 `assetClass` 로 구분합니다.\n\n클라이언트는 unknown enum 값을 허용하도록 구현해야 합니다.\n',
+  });
+
+/**
+ * 거래 상품군.
+ * - `STOCK`: 주식. ETF·리츠·ETN 은 주식처럼 거래되므로 `STOCK` 이며, 세부 분류는 `GET /api/v1/stocks/{symbol}` 의 `securityType` 으로 확인합니다.
+ * - `BOND`: 채권. `symbol` 은 null 이고 `isinCode` 로 식별합니다.
+ * - `OPTION`: 옵션. `symbol` 은 OCC 옵션 심볼이며 `isinCode` 는 null 입니다.
+ *
+ * 클라이언트는 unknown enum 값을 허용하도록 구현해야 합니다.
+ *
+ */
+export const zAssetClass = z.enum(['STOCK', 'BOND', 'OPTION']).register(z.globalRegistry, {
+  description:
+    '거래 상품군.\n- `STOCK`: 주식. ETF·리츠·ETN 은 주식처럼 거래되므로 `STOCK` 이며, 세부 분류는 `GET /api/v1/stocks/{symbol}` 의 `securityType` 으로 확인합니다.\n- `BOND`: 채권. `symbol` 은 null 이고 `isinCode` 로 식별합니다.\n- `OPTION`: 옵션. `symbol` 은 OCC 옵션 심볼이며 `isinCode` 는 null 입니다.\n\n클라이언트는 unknown enum 값을 허용하도록 구현해야 합니다.\n',
+});
+
+/**
+ * 모든 금액(`filledPrice`·`amount`·`commission`·`tax`·`netAmount`)은 `currency` 통화이며 부호(+/−)가 없습니다.
+ * 일반 거래의 금액 방향은 `transactionType`으로 구분합니다.
+ * `isCancellation=true`이면 취소 거래입니다. `transactionType`은 취소 대상 거래(원거래)의 유형을 유지합니다.
+ * 예를 들어 입금(`DEPOSIT`)을 취소한 내역은 `DEPOSIT`으로 표시되지만, 취소 금액은 계좌에서 빠져나갑니다.
+ * 원거래는 목록에 표시되지 않고, 취소 거래만 표시됩니다. 따라서 거래 금액을 합산한 값이 해당 기간의 실제 계좌 잔액 변화와 일치하지 않을 수 있습니다.
+ * 옵션·채권 거래도 같은 `transactionType` 으로 나오며 상품은 `assetClass` 로 구분합니다.
+ *
+ */
+export const zTransaction = z
+  .object({
+    transactionType: zTransactionType,
+    marketCountry: zMarketCountry,
+    currency: zCurrency,
+    symbol: z.string().nullable(),
+    assetClass: zAssetClass.nullable(),
+    isinCode: z.string().nullable(),
+    quantity: z.string().max(30).nullable(),
+    filledPrice: z.string().max(30).nullable(),
+    amount: z.string().max(30).nullable(),
+    commission: z.string().max(30).register(z.globalRegistry, {
+      description:
+        '수수료. 입출고·환전을 포함한 모든 유형에서 해당 거래의 금액을 제공하며, 값이 없으면 `"0"`입니다.',
+    }),
+    tax: z.string().max(30).register(z.globalRegistry, {
+      description:
+        '해당 거래에 기록된 세금 합계. 값이 없으면 `"0"`입니다. 미국 채권 이자 입금의 세금은 `"0"`이며, 별도로 출금되는 원화 세금은 `WITHDRAWAL` 거래로 제공합니다. 이 경우 `amount`와 `tax`에 같은 세액이 표시될 수 있으며, `amount`에서 `tax`를 다시 차감하지 않습니다.',
+    }),
+    netAmount: z.string().max(30).nullable(),
+    exchangeRate: z.string().max(30).nullable(),
+    settlementDate: z.iso.date().register(z.globalRegistry, {
+      description:
+        'KST 기준 결제일 (YYYY-MM-DD). 모든 거래에 제공합니다.\n결제된 매매는 결제일, 그 외 결제 완료 내역은 거래가 처리된 날짜이며 미결제 거래는 예상 결제일입니다. 미국 거래는 현지 결제일과 다를 수 있습니다.\n결제 여부는 날짜가 미래인지로 추정하지 말고 `settled`로 확인합니다.\n미결제 상태로 나오는 거래는 매매(`BUY`·`SELL`)뿐이며, 입출금·환전·배당·이자 등은 항상 결제된 상태로 조회됩니다.\n',
+    }),
+    settled: z.boolean().register(z.globalRegistry, {
+      description:
+        '결제 완료 여부. 미결제는 false이며, 예상 결제일이 오늘 또는 과거여도 미결제일 수 있습니다.',
+    }),
+    transactionTime: z.iso.datetime({ offset: true }).nullable(),
+    isCancellation: z.boolean().register(z.globalRegistry, {
+      description:
+        '국내 거래의 취소 여부. true이면 거래를 취소한 내역이며, 원거래는 목록에서 제외됩니다.\n취소 내역의 거래 유형은 원래 유형을 유지합니다. 입금(`DEPOSIT`) 취소는 계좌에서 금액이 빠져나가며, 출금(`WITHDRAWAL`) 취소는 계좌로 금액이 돌아옵니다.\n거래를 취소하는 대신 반대 방향의 새 거래로 처리한 경우에는 false이며, 기존 거래와 새 거래가 함께 조회됩니다.\n모든 취소 방식을 나타내는 값은 아닙니다.\n',
+    }),
+  })
+  .register(z.globalRegistry, {
+    description:
+      '모든 금액(`filledPrice`·`amount`·`commission`·`tax`·`netAmount`)은 `currency` 통화이며 부호(+/−)가 없습니다.\n일반 거래의 금액 방향은 `transactionType`으로 구분합니다.\n`isCancellation=true`이면 취소 거래입니다. `transactionType`은 취소 대상 거래(원거래)의 유형을 유지합니다.\n예를 들어 입금(`DEPOSIT`)을 취소한 내역은 `DEPOSIT`으로 표시되지만, 취소 금액은 계좌에서 빠져나갑니다.\n원거래는 목록에 표시되지 않고, 취소 거래만 표시됩니다. 따라서 거래 금액을 합산한 값이 해당 기간의 실제 계좌 잔액 변화와 일치하지 않을 수 있습니다.\n옵션·채권 거래도 같은 `transactionType` 으로 나오며 상품은 `assetClass` 로 구분합니다.\n',
+  });
+
+/**
+ * 거래내역 페이징 응답.
+ * 조회 조건에 맞는 미결제 내역을 먼저 반환하고, 각 그룹 안에서는 해당 내역의 정렬 기준 시각이 최신인 순서로 정렬합니다.
+ * 미결제의 정렬 기준은 국내주식 합산 내역의 첫 체결시각, 미국 주식 주문시각, 미국 옵션·채권 체결시각입니다.
+ * 결제 완료 내역은 거래 처리시각 기준입니다. 매매는 결제 처리시각이며, 주문·체결시각과 다릅니다.
+ * 국내주식은 미결제 한 건이 결제 후 여러 건의 결제 내역으로 바뀔 수 있습니다.
+ * 반환 건수가 `limit`보다 적거나 0건이어도 다음 페이지가 있을 수 있으므로 `hasNext`로 종료 여부를 확인하세요.
+ * 다음 페이지가 있으면 `nextCursor` 에 커서가, `hasNext` 에 `true` 가 내려옵니다.
+ *
+ */
+export const zPaginatedTransactionResponse = z
+  .object({
+    transactions: z.array(zTransaction).register(z.globalRegistry, {
+      description:
+        '거래 목록. 조건에 맞는 미결제 내역을 먼저 반환하며, 각 그룹 안에서는 정렬 기준 시각의 최신순입니다.',
+    }),
+    nextCursor: z.string().nullable(),
+    hasNext: z.boolean().register(z.globalRegistry, {
+      description: '다음 페이지 존재 여부',
+    }),
+  })
+  .register(z.globalRegistry, {
+    description:
+      '거래내역 페이징 응답.\n조회 조건에 맞는 미결제 내역을 먼저 반환하고, 각 그룹 안에서는 해당 내역의 정렬 기준 시각이 최신인 순서로 정렬합니다.\n미결제의 정렬 기준은 국내주식 합산 내역의 첫 체결시각, 미국 주식 주문시각, 미국 옵션·채권 체결시각입니다.\n결제 완료 내역은 거래 처리시각 기준입니다. 매매는 결제 처리시각이며, 주문·체결시각과 다릅니다.\n국내주식은 미결제 한 건이 결제 후 여러 건의 결제 내역으로 바뀔 수 있습니다.\n반환 건수가 `limit`보다 적거나 0건이어도 다음 페이지가 있을 수 있으므로 `hasNext`로 종료 여부를 확인하세요.\n다음 페이지가 있으면 `nextCursor` 에 커서가, `hasNext` 에 `true` 가 내려옵니다.\n',
+  });
+
+/**
  * 조건주문 생성 응답.
  */
 export const zConditionalOrderCreateResponse = z
@@ -2352,6 +2480,76 @@ export const zGetHoldingsQuery = z.object({
         "종목 심볼. KR: 6자리 종목코드 (숫자 또는 영문·숫자 조합; 예: 005930, 0101N0), US: 티커 (예: AAPL).\n영문 대/소문자, 숫자, '.', '-' 만 허용한다.\n제공 시 해당 종목만 필터링하여 반환하며, 요약 필드도 해당 종목 기준으로 재계산합니다.\n미제공 시 전체 보유 종목을 반환합니다.\n",
     })
     .optional(),
+});
+
+export const zGetTransactionsHeaders = z.object({
+  'X-Tossinvest-Account': z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .register(z.globalRegistry, {
+      description:
+        'API 요청 시 사용할 계좌의 accountSeq.\n`GET /api/v1/accounts` 응답의 `accountSeq` 값을 사용합니다.\n',
+    }),
+});
+
+export const zGetTransactionsQuery = z.object({
+  transactionTypes: z
+    .array(
+      z.enum([
+        'BUY',
+        'SELL',
+        'SECURITIES_TRANSFER_IN',
+        'SECURITIES_TRANSFER_OUT',
+        'DEPOSIT',
+        'WITHDRAWAL',
+        'EXCHANGE_IN',
+        'EXCHANGE_OUT',
+        'DIVIDEND',
+        'INTEREST',
+        'FEE',
+      ]),
+    )
+    .register(z.globalRegistry, {
+      description:
+        '거래 유형 필터. 콤마(`,`)로 구분해 여러 값을 넣을 수 있으며 OR 조건입니다.\n지원하지 않는 값이 있으면 400 (`invalid-request`).\n생략하거나 빈 목록(`transactionTypes=`)이면 전체 유형을 조회합니다. 목록 중간의 빈 값(`BUY,,SELL`)은 허용하지 않습니다.\n예: `transactionTypes=BUY,SELL` 은 매수·매도 내역을 조회합니다.\n\n- `BUY`: 매수\n- `SELL`: 매도\n- `SECURITIES_TRANSFER_IN`: 증권 입고 (타사 이관, 주식배당 등)\n- `SECURITIES_TRANSFER_OUT`: 증권 출고 (타사 이관, 옵션 만기 청산 등)\n- `DEPOSIT`: 현금 입금 (은행 이체, 채권 만기 원리금 등)\n- `WITHDRAWAL`: 현금 출금 (은행 이체, 채권 이자 세금 등)\n- `EXCHANGE_IN`: 환전으로 받은 통화의 입금\n- `EXCHANGE_OUT`: 환전으로 낸 통화의 출금\n- `DIVIDEND`: 배당금 입금\n- `INTEREST`: 이자 입금 (예탁금이용료, 채권 이자)\n- `FEE`: 수수료 출금(외화보관수수료 등). 매매 수수료는 별도 거래가 아닌 매매 거래의 `commission`에 포함됩니다.\n',
+    })
+    .optional(),
+  from: z.iso
+    .date()
+    .register(z.globalRegistry, {
+      description:
+        '조회 시작일 (inclusive, KST 기준). 결제일(`settlementDate`) 기준. 미지정 시 하한 없음.\n`from`이 `to`보다 늦으면 400 (`invalid-request`).\n',
+    })
+    .optional(),
+  to: z.iso
+    .date()
+    .register(z.globalRegistry, {
+      description:
+        '조회 종료일 (inclusive, KST 기준). 결제일(`settlementDate`) 기준. 미결제는 예상 결제일로 조회합니다. 미래 날짜도 허용합니다.\n예: 9/29 에 매수해 10/1 에 결제된 거래는 `to=2026-09-30` 조회에 나오지 않습니다.\n미지정 시 상한 없음 (미결제 거래 포함).\n',
+    })
+    .optional(),
+  cursor: z
+    .string()
+    .register(z.globalRegistry, {
+      description:
+        '페이지네이션 커서. 직전 응답의 `nextCursor` 값을 그대로 넣습니다. 미지정 시 첫 페이지.\n커서 오류로 400 (`invalid-request`)을 받으면 커서를 생략하고 첫 페이지부터 다시 조회하세요.\n커서는 해석하거나 직접 생성하지 마세요. 문서의 커서 값은 설명용 가상 값이므로 실제 요청에 사용할 수 없습니다.\n계좌 또는 필터(`transactionTypes`·`from`·`to`)를 바꿀 때는 `cursor` 를 빼고 첫 페이지부터 요청해야 합니다.\n',
+    })
+    .optional(),
+  limit: z
+    .int()
+    .gte(1)
+    .lte(100)
+    .register(z.globalRegistry, {
+      description:
+        '페이지 최대 크기 (기본 20, 최대 100). 범위 밖이면 400 (`invalid-request`). 반환 건수가 limit보다 적어도 다음 페이지가 있을 수 있으므로 hasNext를 확인하세요.',
+    })
+    .optional()
+    .default(20),
 });
 
 export const zGetOrdersHeaders = z.object({

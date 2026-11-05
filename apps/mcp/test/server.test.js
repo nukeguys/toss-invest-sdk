@@ -34,6 +34,7 @@ const readTools = [
   'toss_get_market_indicator_investor_trading',
   'toss_list_accounts',
   'toss_get_holdings',
+  'toss_get_transactions',
   'toss_list_orders',
   'toss_get_order',
   'toss_list_conditional_orders',
@@ -105,6 +106,38 @@ test('exposes read tools by default and maps their arguments to the SDK', async 
       },
     ],
   ]);
+});
+
+test('maps transaction filters and account to the SDK', async (t) => {
+  const calls = [];
+  const client = await connect(t, {
+    getTransactions: async (options) => {
+      calls.push(options);
+      return { data: { result: { transactions: [], hasNext: true, nextCursor: 'next' } } };
+    },
+  });
+  const result = await client.callTool({
+    name: 'toss_get_transactions',
+    arguments: { accountSeq: 7, transactionTypes: ['BUY', 'SELL'], cursor: 'page', limit: 5 },
+  });
+  assert.deepEqual(calls, [
+    {
+      headers: { 'X-Tossinvest-Account': 7 },
+      query: { transactionTypes: ['BUY', 'SELL'], cursor: 'page', limit: 5 },
+      throwOnError: true,
+    },
+  ]);
+  assert.deepEqual(JSON.parse(result.content[0].text), {
+    transactions: [],
+    hasNext: true,
+    nextCursor: 'next',
+  });
+  const invalid = await client.callTool({
+    name: 'toss_get_transactions',
+    arguments: { accountSeq: 7, limit: 101 },
+  });
+  assert.equal(invalid.isError, true);
+  assert.equal(calls.length, 1);
 });
 
 test('maps sector and investor ranking tools to the SDK', async (t) => {

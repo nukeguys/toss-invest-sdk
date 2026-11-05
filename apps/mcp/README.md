@@ -42,6 +42,7 @@ TOSS_CLIENT_ID=... TOSS_CLIENT_SECRET=... npx -y @wi9ine/toss-invest-mcp
 - `toss_get_market_indicator_investor_trading`: KOSPI/KOSDAQ investor trading amounts
 - `toss_list_accounts`: supported brokerage accounts and their `accountSeq`
 - `toss_get_holdings`: holdings for an account
+- `toss_get_transactions`: account transaction history
 - `toss_list_orders`: open or closed order history for an account
 - `toss_get_order`: details for one order
 - `toss_list_conditional_orders`: open or closed conditional orders

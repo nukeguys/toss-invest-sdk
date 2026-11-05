@@ -45,6 +45,7 @@ import {
   zGetStockShortSellingQuery,
   zGetStockWarningsPath,
   zGetTradesQuery,
+  zGetTransactionsQuery,
   zGetUsMarketCalendarQuery,
   zListStocksQuery,
   zModifyConditionalOrderBody,
@@ -275,7 +276,7 @@ export function createTossInvestMcpServer(
   }
 
   const server = new McpServer(
-    { name: 'toss-invest', version: '0.3.0' },
+    { name: 'toss-invest', version: '0.4.0' },
     {
       instructions: allowTrading
         ? '토스증권 조회 및 주문 서버입니다. 계좌 API를 호출하기 전에 toss_list_accounts로 accountSeq를 확인하고, 주문 도구는 사용자의 승인을 받은 경우에만 호출하세요.'
@@ -724,6 +725,28 @@ export function createTossInvestMcpServer(
         client.getHoldings({
           headers: { 'X-Tossinvest-Account': accountSeq },
           query: { symbol },
+          throwOnError: true,
+        }),
+      ),
+  );
+
+  server.registerTool(
+    'toss_get_transactions',
+    {
+      annotations: readOnly,
+      description:
+        '계좌의 매매·입출금·환전·배당 등 거래내역을 조회합니다. 다음 페이지는 hasNext와 nextCursor로 확인하세요.',
+      inputSchema: z.object({
+        accountSeq: accountSeq.describe('toss_list_accounts가 반환한 accountSeq'),
+        ...zGetTransactionsQuery.shape,
+      }),
+      title: '계좌 거래내역 조회',
+    },
+    ({ accountSeq, ...query }) =>
+      call(() =>
+        client.getTransactions({
+          headers: { 'X-Tossinvest-Account': accountSeq },
+          query,
           throwOnError: true,
         }),
       ),

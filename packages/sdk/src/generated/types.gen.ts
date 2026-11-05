@@ -2222,6 +2222,201 @@ export type Commission = {
 };
 
 /**
+ * 거래내역 페이징 응답.
+ * 조회 조건에 맞는 미결제 내역을 먼저 반환하고, 각 그룹 안에서는 해당 내역의 정렬 기준 시각이 최신인 순서로 정렬합니다.
+ * 미결제의 정렬 기준은 국내주식 합산 내역의 첫 체결시각, 미국 주식 주문시각, 미국 옵션·채권 체결시각입니다.
+ * 결제 완료 내역은 거래 처리시각 기준입니다. 매매는 결제 처리시각이며, 주문·체결시각과 다릅니다.
+ * 국내주식은 미결제 한 건이 결제 후 여러 건의 결제 내역으로 바뀔 수 있습니다.
+ * 반환 건수가 `limit`보다 적거나 0건이어도 다음 페이지가 있을 수 있으므로 `hasNext`로 종료 여부를 확인하세요.
+ * 다음 페이지가 있으면 `nextCursor` 에 커서가, `hasNext` 에 `true` 가 내려옵니다.
+ *
+ */
+export type PaginatedTransactionResponse = {
+  /**
+   * 거래 목록. 조건에 맞는 미결제 내역을 먼저 반환하며, 각 그룹 안에서는 정렬 기준 시각의 최신순입니다.
+   */
+  transactions: Array<Transaction>;
+  /**
+   * 다음 페이지 커서. 다음 페이지가 없으면 null입니다. 값의 길이와 내부 구조에 의존하지 말고 그대로 전달하세요. 문서 예시의 커서는 실제 요청에 사용할 수 없는 가상 값입니다.
+   */
+  nextCursor: string | null;
+  /**
+   * 다음 페이지 존재 여부
+   */
+  hasNext: boolean;
+};
+
+/**
+ * 모든 금액(`filledPrice`·`amount`·`commission`·`tax`·`netAmount`)은 `currency` 통화이며 부호(+/−)가 없습니다.
+ * 일반 거래의 금액 방향은 `transactionType`으로 구분합니다.
+ * `isCancellation=true`이면 취소 거래입니다. `transactionType`은 취소 대상 거래(원거래)의 유형을 유지합니다.
+ * 예를 들어 입금(`DEPOSIT`)을 취소한 내역은 `DEPOSIT`으로 표시되지만, 취소 금액은 계좌에서 빠져나갑니다.
+ * 원거래는 목록에 표시되지 않고, 취소 거래만 표시됩니다. 따라서 거래 금액을 합산한 값이 해당 기간의 실제 계좌 잔액 변화와 일치하지 않을 수 있습니다.
+ * 옵션·채권 거래도 같은 `transactionType` 으로 나오며 상품은 `assetClass` 로 구분합니다.
+ *
+ */
+export type Transaction = {
+  transactionType: TransactionType;
+  /**
+   * 거래가 속한 시장.
+   * 종목 거래는 거래된 시장입니다. 현금·환전 거래는 통화가 `KRW`이면 `KR`, `USD`이면 `US`입니다.
+   * 환전 한 건은 `KR` 거래와 `US` 거래, 두 건으로 나뉩니다.
+   *
+   */
+  marketCountry: MarketCountry;
+  /**
+   * 이 거래의 모든 금액이 표시된 통화. `KR` 거래는 `KRW`, `US` 거래는 `USD`
+   */
+  currency: Currency;
+  /**
+   * 종목 심볼. 주식·옵션 거래에 제공하며, 주식 심볼을 확인할 수 없으면 null입니다.
+   * - 주식(`assetClass=STOCK`): `GET /api/v1/stocks/{symbol}` 등 다른 API 에 그대로 쓸 수 있는 심볼 (KRX 6자리 종목코드, US 티커)
+   * - 옵션(`assetClass=OPTION`): OCC 옵션 심볼 (기초자산 + 만기 `YYMMDD` + `C`/`P` + 행사가 8자리, 예 `AAPL261218C00150000`).
+   * 옵션 계약 식별자이므로 다른 API 의 `symbol` 로 넣을 수 없습니다. `assetClass` 를 먼저 확인하세요.
+   * - 채권(`assetClass=BOND`): 심볼이 없어 null. `isinCode` 로 식별합니다.
+   * - 현금 거래(`assetClass` 가 null): null
+   *
+   */
+  symbol: string | null;
+  /**
+   * 거래 상품을 구분하는 값입니다. 종목과 관련된 거래(매매·입출고·배당, 채권 이자·만기·이자 세금)면 유형과 무관하게 채우고,
+   * 종목과 관련 없는 현금 거래(은행 입출금·환전·수수료 등)는 null 입니다.
+   * 거래 시장은 `marketCountry` 가 나타냅니다.
+   *
+   */
+  assetClass: AssetClass | null;
+  /**
+   * 국제증권식별번호 (ISO 6166). 주식·채권 거래에 채웁니다. 옵션은 ISIN 이 없고 현금 거래는 종목이 없어 null 입니다.
+   * 거래 시점의 ISIN 이므로, 국내 종목의 액면분할·병합 이후에는 `GET /api/v1/stocks/{symbol}` 의 현재 값과 다를 수 있습니다.
+   * 채권은 `symbol` 이 없어 이 값이 유일한 식별자입니다.
+   *
+   */
+  isinCode: string | null;
+  /**
+   * 수량. `BUY`·`SELL`·`SECURITIES_TRANSFER_IN`·`SECURITIES_TRANSFER_OUT` 에 제공하며 그 외는 null 입니다.
+   * 옵션은 계약 수, 채권은 채권 개수입니다.
+   * `DIVIDEND` 는 null 입니다. 주식배당은 `SECURITIES_TRANSFER_IN` 으로 나오며 수량이 있습니다.
+   *
+   */
+  quantity: string | null;
+  /**
+   * 매매 단가. `BUY`·`SELL`에 제공하며 그 외는 null입니다.
+   * 국내주식 미결제(주문일·종목·매매방향별 합산)와 미국 주식 미결제(주문별 체결 누계)는 null 입니다.
+   * 국내주식 결제 완료 내역과 미국 옵션·채권은 해당 내역의 체결단가를 제공합니다. 미국 주식 결제 완료 내역은 주문별 평균 체결단가를 제공합니다.
+   * 단가를 확인할 수 없으면 null입니다. 거래내역 한 건이 개별 체결 한 건을 의미하지는 않습니다.
+   * 옵션은 주당 프리미엄이며 1계약 = 100주이므로 `amount = filledPrice × quantity × 100` 입니다.
+   * 채권은 경과이자를 포함한 채권 1개당 달러 가격입니다. 액면 100 기준 호가가 아니며, `amount = filledPrice × quantity` 입니다.
+   *
+   */
+  filledPrice: string | null;
+  /**
+   * `currency` 통화 기준 거래금액. 합산 내역은 거래금액의 합계를 제공하며, 단가가 null일 수 있으므로 단가와 수량으로 재계산하지 않습니다.
+   * 증권 입출고(`SECURITIES_TRANSFER_IN`·`SECURITIES_TRANSFER_OUT`)는 null 입니다.
+   *
+   */
+  amount: string | null;
+  /**
+   * 수수료. 입출고·환전을 포함한 모든 유형에서 해당 거래의 금액을 제공하며, 값이 없으면 `"0"`입니다.
+   */
+  commission: string;
+  /**
+   * 해당 거래에 기록된 세금 합계. 값이 없으면 `"0"`입니다. 미국 채권 이자 입금의 세금은 `"0"`이며, 별도로 출금되는 원화 세금은 `WITHDRAWAL` 거래로 제공합니다. 이 경우 `amount`와 `tax`에 같은 세액이 표시될 수 있으며, `amount`에서 `tax`를 다시 차감하지 않습니다.
+   */
+  tax: string;
+  /**
+   * 수수료와 세금을 반영한 정산 금액입니다. 결제 완료 내역은 정산된 금액이며, 미결제 내역은 결제 전에 계산된 금액입니다.
+   * 부호 없이 절대값으로 제공합니다. 취소 여부에 따른 금액 방향은 `isCancellation` 설명을 참고하세요.
+   * 상품별 정산 규칙과 반올림 때문에 `amount`·`commission`·`tax`로 직접 계산한 값과 다를 수 있으므로, 계산하지 말고 이 값을 사용합니다.
+   * 예수금 변동과 같지 않을 수 있습니다.
+   * 증권 입출고(`SECURITIES_TRANSFER_IN`·`SECURITIES_TRANSFER_OUT`)는 null 입니다.
+   *
+   * 일반 거래(`isCancellation=false`)의 현금 방향은 다음과 같습니다.
+   * - 유입: `SELL`, `DEPOSIT`, `EXCHANGE_IN`, `DIVIDEND`, `INTEREST`
+   * - 유출: `BUY`, `WITHDRAWAL`, `EXCHANGE_OUT`, `FEE`
+   *
+   */
+  netAmount: string | null;
+  /**
+   * 해당 거래의 환율 (1 USD당 KRW). `currency`가 `USD`인 결제 완료 거래에 제공하며, 값이 없으면 null입니다. 증권 입출고는 null입니다.
+   * 미결제는 상품과 무관하게 null입니다. `KRW` 거래는 환전을 포함해 null입니다.
+   * 환전 한 건의 환율은 `USD` 쪽 거래에서 확인합니다.
+   *
+   */
+  exchangeRate: string | null;
+  /**
+   * KST 기준 결제일 (YYYY-MM-DD). 모든 거래에 제공합니다.
+   * 결제된 매매는 결제일, 그 외 결제 완료 내역은 거래가 처리된 날짜이며 미결제 거래는 예상 결제일입니다. 미국 거래는 현지 결제일과 다를 수 있습니다.
+   * 결제 여부는 날짜가 미래인지로 추정하지 말고 `settled`로 확인합니다.
+   * 미결제 상태로 나오는 거래는 매매(`BUY`·`SELL`)뿐이며, 입출금·환전·배당·이자 등은 항상 결제된 상태로 조회됩니다.
+   *
+   */
+  settlementDate: string;
+  /**
+   * 결제 완료 여부. 미결제는 false이며, 예상 결제일이 오늘 또는 과거여도 미결제일 수 있습니다.
+   */
+  settled: boolean;
+  /**
+   * 결제 완료 내역의 거래 처리일시(KST, +09:00). 매매는 결제 처리시각이며 주문시각이나 체결시각이 아닙니다.
+   * 국내 취소거래는 취소 시점입니다. 미결제는 null입니다.
+   * 조회 기간은 이 시각이 아닌 settlementDate 기준입니다.
+   *
+   */
+  transactionTime: string | null;
+  /**
+   * 국내 거래의 취소 여부. true이면 거래를 취소한 내역이며, 원거래는 목록에서 제외됩니다.
+   * 취소 내역의 거래 유형은 원래 유형을 유지합니다. 입금(`DEPOSIT`) 취소는 계좌에서 금액이 빠져나가며, 출금(`WITHDRAWAL`) 취소는 계좌로 금액이 돌아옵니다.
+   * 거래를 취소하는 대신 반대 방향의 새 거래로 처리한 경우에는 false이며, 기존 거래와 새 거래가 함께 조회됩니다.
+   * 모든 취소 방식을 나타내는 값은 아닙니다.
+   *
+   */
+  isCancellation: boolean;
+};
+
+/**
+ * 거래 유형. 요청 `transactionTypes` 와 같은 값 체계입니다.
+ * 매수·매도는 미결제와 결제 완료 내역을 모두 포함하며, 결제 완료 여부는 `settled`로 구분합니다.
+ * - `BUY`: 매수
+ * - `SELL`: 매도
+ * - `SECURITIES_TRANSFER_IN`: 증권 입고 (타사 이관, 주식배당 등)
+ * - `SECURITIES_TRANSFER_OUT`: 증권 출고 (타사 이관, 옵션 만기 청산 등)
+ * - `DEPOSIT`: 현금 입금 (은행 이체, 채권 만기 원리금 등)
+ * - `WITHDRAWAL`: 현금 출금 (은행 이체, 채권 이자 세금 등)
+ * - `EXCHANGE_IN`: 환전으로 받은 통화의 입금
+ * - `EXCHANGE_OUT`: 환전으로 낸 통화의 출금
+ * - `DIVIDEND`: 배당금 입금
+ * - `INTEREST`: 이자 입금 (예탁금이용료, 채권 이자)
+ * - `FEE`: 수수료 출금(외화보관수수료 등). 매매 수수료는 별도 거래가 아닌 매매 거래의 `commission`에 포함됩니다.
+ *
+ * 옵션·채권 거래도 위 유형으로 나오며 상품은 `assetClass` 로 구분합니다.
+ *
+ * 클라이언트는 unknown enum 값을 허용하도록 구현해야 합니다.
+ *
+ */
+export type TransactionType =
+  | 'BUY'
+  | 'SELL'
+  | 'SECURITIES_TRANSFER_IN'
+  | 'SECURITIES_TRANSFER_OUT'
+  | 'DEPOSIT'
+  | 'WITHDRAWAL'
+  | 'EXCHANGE_IN'
+  | 'EXCHANGE_OUT'
+  | 'DIVIDEND'
+  | 'INTEREST'
+  | 'FEE';
+
+/**
+ * 거래 상품군.
+ * - `STOCK`: 주식. ETF·리츠·ETN 은 주식처럼 거래되므로 `STOCK` 이며, 세부 분류는 `GET /api/v1/stocks/{symbol}` 의 `securityType` 으로 확인합니다.
+ * - `BOND`: 채권. `symbol` 은 null 이고 `isinCode` 로 식별합니다.
+ * - `OPTION`: 옵션. `symbol` 은 OCC 옵션 심볼이며 `isinCode` 는 null 입니다.
+ *
+ * 클라이언트는 unknown enum 값을 허용하도록 구현해야 합니다.
+ *
+ */
+export type AssetClass = 'STOCK' | 'BOND' | 'OPTION';
+
+/**
  * 조건주문 생성 응답.
  */
 export type ConditionalOrderCreateResponse = {
@@ -3784,6 +3979,116 @@ export type GetHoldingsResponses = {
 };
 
 export type GetHoldingsResponse = GetHoldingsResponses[keyof GetHoldingsResponses];
+
+export type GetTransactionsData = {
+  body?: never;
+  headers: {
+    /**
+     * API 요청 시 사용할 계좌의 accountSeq.
+     * `GET /api/v1/accounts` 응답의 `accountSeq` 값을 사용합니다.
+     *
+     */
+    'X-Tossinvest-Account': number;
+  };
+  path?: never;
+  query?: {
+    /**
+     * 거래 유형 필터. 콤마(`,`)로 구분해 여러 값을 넣을 수 있으며 OR 조건입니다.
+     * 지원하지 않는 값이 있으면 400 (`invalid-request`).
+     * 생략하거나 빈 목록(`transactionTypes=`)이면 전체 유형을 조회합니다. 목록 중간의 빈 값(`BUY,,SELL`)은 허용하지 않습니다.
+     * 예: `transactionTypes=BUY,SELL` 은 매수·매도 내역을 조회합니다.
+     *
+     * - `BUY`: 매수
+     * - `SELL`: 매도
+     * - `SECURITIES_TRANSFER_IN`: 증권 입고 (타사 이관, 주식배당 등)
+     * - `SECURITIES_TRANSFER_OUT`: 증권 출고 (타사 이관, 옵션 만기 청산 등)
+     * - `DEPOSIT`: 현금 입금 (은행 이체, 채권 만기 원리금 등)
+     * - `WITHDRAWAL`: 현금 출금 (은행 이체, 채권 이자 세금 등)
+     * - `EXCHANGE_IN`: 환전으로 받은 통화의 입금
+     * - `EXCHANGE_OUT`: 환전으로 낸 통화의 출금
+     * - `DIVIDEND`: 배당금 입금
+     * - `INTEREST`: 이자 입금 (예탁금이용료, 채권 이자)
+     * - `FEE`: 수수료 출금(외화보관수수료 등). 매매 수수료는 별도 거래가 아닌 매매 거래의 `commission`에 포함됩니다.
+     *
+     */
+    transactionTypes?: Array<
+      | 'BUY'
+      | 'SELL'
+      | 'SECURITIES_TRANSFER_IN'
+      | 'SECURITIES_TRANSFER_OUT'
+      | 'DEPOSIT'
+      | 'WITHDRAWAL'
+      | 'EXCHANGE_IN'
+      | 'EXCHANGE_OUT'
+      | 'DIVIDEND'
+      | 'INTEREST'
+      | 'FEE'
+    >;
+    /**
+     * 조회 시작일 (inclusive, KST 기준). 결제일(`settlementDate`) 기준. 미지정 시 하한 없음.
+     * `from`이 `to`보다 늦으면 400 (`invalid-request`).
+     *
+     */
+    from?: string;
+    /**
+     * 조회 종료일 (inclusive, KST 기준). 결제일(`settlementDate`) 기준. 미결제는 예상 결제일로 조회합니다. 미래 날짜도 허용합니다.
+     * 예: 9/29 에 매수해 10/1 에 결제된 거래는 `to=2026-09-30` 조회에 나오지 않습니다.
+     * 미지정 시 상한 없음 (미결제 거래 포함).
+     *
+     */
+    to?: string;
+    /**
+     * 페이지네이션 커서. 직전 응답의 `nextCursor` 값을 그대로 넣습니다. 미지정 시 첫 페이지.
+     * 커서 오류로 400 (`invalid-request`)을 받으면 커서를 생략하고 첫 페이지부터 다시 조회하세요.
+     * 커서는 해석하거나 직접 생성하지 마세요. 문서의 커서 값은 설명용 가상 값이므로 실제 요청에 사용할 수 없습니다.
+     * 계좌 또는 필터(`transactionTypes`·`from`·`to`)를 바꿀 때는 `cursor` 를 빼고 첫 페이지부터 요청해야 합니다.
+     *
+     */
+    cursor?: string;
+    /**
+     * 페이지 최대 크기 (기본 20, 최대 100). 범위 밖이면 400 (`invalid-request`). 반환 건수가 limit보다 적어도 다음 페이지가 있을 수 있으므로 hasNext를 확인하세요.
+     */
+    limit?: number;
+  };
+  url: '/api/v1/transactions';
+};
+
+export type GetTransactionsErrors = {
+  /**
+   * 잘못된 요청
+   */
+  400: ErrorResponse;
+  /**
+   * 인증 실패. `WWW-Authenticate: Bearer ...` 헤더가 함께 내려갑니다.
+   *
+   */
+  401: ErrorResponse;
+  /**
+   * 계좌를 찾을 수 없음
+   */
+  404: ErrorResponse;
+  /**
+   * 요청 한도 초과. 포함 헤더의 의미는 아래 `headers` 정의를 참조합니다.
+   */
+  429: ErrorResponse;
+  /**
+   * 거래내역 조회 중 일시적 오류
+   */
+  500: ErrorResponse;
+};
+
+export type GetTransactionsError = GetTransactionsErrors[keyof GetTransactionsErrors];
+
+export type GetTransactionsResponses = {
+  /**
+   * 성공
+   */
+  200: ApiResponse & {
+    result?: PaginatedTransactionResponse;
+  };
+};
+
+export type GetTransactionsResponse = GetTransactionsResponses[keyof GetTransactionsResponses];
 
 export type GetOrdersData = {
   body?: never;

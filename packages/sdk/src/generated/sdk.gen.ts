@@ -118,6 +118,9 @@ import type {
   GetTradesData,
   GetTradesErrors,
   GetTradesResponses,
+  GetTransactionsData,
+  GetTransactionsErrors,
+  GetTransactionsResponses,
   GetUsMarketCalendarData,
   GetUsMarketCalendarErrors,
   GetUsMarketCalendarResponses,
@@ -996,6 +999,49 @@ export class TossInvestApi extends HeyApiClient {
     >({
       security: [{ scheme: 'bearer', type: 'http' }],
       url: '/api/v1/holdings',
+      ...options,
+    });
+  }
+
+  /**
+   * 거래내역 조회
+   *
+   * 계좌의 거래내역을 조회합니다. 매매, 입출금, 환전, 배당, 이자, 수수료, 증권 입출고가 대상이며 국내(KR)와 미국(US)을 한 목록으로 반환합니다.
+   * 옵션·채권 거래도 같은 거래 유형으로 포함되며, 상품 구분은 `assetClass` 로 합니다.
+   *
+   * 조회 조건에 맞는 미결제 내역을 먼저 보여주고, 이어서 결제 완료 내역을 보여줍니다. 각 그룹 안에서는 다음 시각이 최신인 순서로 정렬합니다.
+   * - 미결제: 국내주식은 합산된 내역의 첫 체결시각, 미국 주식은 주문시각, 미국 옵션·채권은 체결시각
+   * - 결제 완료: 거래 처리시각. 매매는 결제 처리시각이며, 주문·체결시각과 다릅니다.
+   *
+   * ### 상품별 거래내역 제공 단위
+   *
+   * | 상품 | 미결제 | 결제 완료 |
+   * |---|---|---|
+   * | 국내주식 | 같은 주문일·종목·매매방향의 체결 내역을 합산 | 체결가 등 결제 기준이 같은 내역을 합산. 미결제와 합산 기준이 다름 |
+   * | 미국 주식 | 주문별 체결 내역을 합산 | 주문별 체결 내역을 합산 |
+   * | 미국 옵션·채권 | 체결별 | 체결별 |
+   *
+   * 국내주식은 미결제 한 건이 결제 후 여러 건의 결제 내역으로 바뀔 수 있습니다.
+   * 날짜 필터는 결제일 기준이며 미결제는 예상 결제일에 적용됩니다. `to`가 오늘이면 예상 결제일이 미래인 미결제는 제외됩니다.
+   * 미결제까지 조회하려면 `to`를 생략하거나 예상 결제일까지 지정하세요.
+   * 거래내역에 해당하는 주문의 식별자는 제공하지 않습니다.
+   *
+   * 응답 예시는 형식과 필드 의미를 설명하기 위한 가상 거래이며, 실제 체결 가격·수수료율·세율·환율을 나타내지 않습니다.
+   *
+   * **Rate Limits Group**: `TRANSACTION`
+   *
+   */
+  public getTransactions<ThrowOnError extends boolean = false>(
+    options: Options<GetTransactionsData, ThrowOnError>,
+  ): RequestResult<GetTransactionsResponses, GetTransactionsErrors, ThrowOnError> {
+    return (options.client ?? this.client).get<
+      GetTransactionsResponses,
+      GetTransactionsErrors,
+      ThrowOnError
+    >({
+      querySerializer: { parameters: { transactionTypes: { array: { explode: false } } } },
+      security: [{ scheme: 'bearer', type: 'http' }],
+      url: '/api/v1/transactions',
       ...options,
     });
   }
