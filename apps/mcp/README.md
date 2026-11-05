@@ -253,7 +253,8 @@ Before running it, configure a GitHub Actions trusted publisher for **each** npm
 its npm package settings: owner `wi9ine`, repository `toss-invest-sdk`, workflow filename
 `publish.yml`, and allow `npm publish`. Complete the first publish within two days of creating
 the trusted publisher. No npm token or MCP Registry secret is needed. The workflow checks each
-published version before continuing and waits for the MCP package to appear on npm.
+published version before continuing. It submits both packages before waiting for npm validation;
+MCP Registry registration requires the MCP version to be publicly available.
 
 For release notifications, create a Slack incoming webhook for the target channel and save its
 URL as the GitHub Actions repository secret `SLACK_WEBHOOK_URL`. The notification includes the

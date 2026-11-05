@@ -63,29 +63,41 @@ jobs:
           for package in sdk mcp; do
             name="@wi9ine/toss-invest-${package}"
             url="https://registry.npmjs.org/@wi9ine%2ftoss-invest-${package}/${version}"
-            status=$(curl -fsS -o /dev/null -w '%{http_code}' "$url" || true)
+            status=$(curl -sS -o /dev/null -w '%{http_code}' "$url")
             if [ "$status" = 200 ]; then
-              echo "$name@$version already published"
+              echo "$name@$version is already public"
             elif [ "$status" = 404 ]; then
-              npm publish "$RUNNER_TEMP/packages/wi9ine-toss-invest-${package}-${version}.tgz" --access public
+              if npm view "$name" dist-tags --json --prefer-online | jq -e --arg version "$version" 'any(.[]; . == $version)' > /dev/null; then
+                echo "$name@$version was submitted and is not public yet"
+              else
+                npm publish "$RUNNER_TEMP/packages/wi9ine-toss-invest-${package}-${version}.tgz" --access public
+              fi
             else
               echo "npm registry returned HTTP $status for $name@$version" >&2
               exit 1
             fi
-            for attempt in {1..30}; do
-              status=$(curl -fsS -o /dev/null -w '%{http_code}' "$url" 2>/dev/null || true)
-              if [ "$status" = 200 ]; then break; fi
-              if [ "$status" != 404 ]; then
-                echo "npm registry returned HTTP $status for $name@$version" >&2
+          done
+      - name: Wait for npm packages to become public
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          for attempt in {1..90}; do
+            ready=true
+            for package in sdk mcp; do
+              url="https://registry.npmjs.org/@wi9ine%2ftoss-invest-${package}/${version}"
+              status=$(curl -sS -o /dev/null -w '%{http_code}' "$url")
+              if [ "$status" = 404 ]; then
+                ready=false
+              elif [ "$status" != 200 ]; then
+                echo "npm registry returned HTTP $status for $package@$version" >&2
                 exit 1
               fi
-              sleep 10
             done
-            if [ "$status" != 200 ]; then
-              echo "$name@$version is not public yet. Check npm for staged releases requiring approval, then rerun this workflow." >&2
-              exit 1
-            fi
+            if [ "$ready" = true ]; then exit 0; fi
+            sleep 20
           done
+          echo 'npm packages are not public yet. Check their validation status before rerunning.' >&2
+          exit 1
       - uses: sigstore/cosign-installer@v4.1.3
       - name: Install MCP publisher
         run: |
