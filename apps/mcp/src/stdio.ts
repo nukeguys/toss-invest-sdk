@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
-import { createTossInvestClient } from '@wi9ine/toss-invest-sdk';
+import { createTossInvestClient } from '@nukeguys/toss-invest-sdk';
 
 import { createTossInvestMcpServer } from './server.js';
 

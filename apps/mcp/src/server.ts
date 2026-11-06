@@ -50,7 +50,7 @@ import {
   zListStocksQuery,
   zModifyConditionalOrderBody,
   zModifyOrderBody,
-} from '@wi9ine/toss-invest-sdk';
+} from '@nukeguys/toss-invest-sdk';
 import { z } from 'zod';
 
 const [quantityOrderBody, amountOrderBody] = zCreateOrderBody.options;

@@ -9,7 +9,7 @@ The server is read-only unless trading is explicitly enabled.
 Run it without cloning this repository:
 
 ```sh
-TOSS_CLIENT_ID=... TOSS_CLIENT_SECRET=... npx -y @wi9ine/toss-invest-mcp
+TOSS_CLIENT_ID=... TOSS_CLIENT_SECRET=... npx -y @nukeguys/toss-invest-mcp
 ```
 
 ## Tools
@@ -65,14 +65,14 @@ The server starts in read-only mode. Add `--allow-trading` to the server argumen
 order creation, modification, and cancellation tools:
 
 ```sh
-npx -y @wi9ine/toss-invest-mcp --allow-trading
+npx -y @nukeguys/toss-invest-mcp --allow-trading
 ```
 
 Orders worth at least KRW 100 million require Toss Securities' `confirmHighValueOrder` field. To
 allow that field, add both permission flags:
 
 ```sh
-npx -y @wi9ine/toss-invest-mcp \
+npx -y @nukeguys/toss-invest-mcp \
   --allow-trading \
   --allow-high-value-orders
 ```
@@ -88,7 +88,7 @@ These Codex clients share `~/.codex/config.toml`:
 ```toml
 [mcp_servers.toss-invest]
 command = "npx"
-args = ["-y", "@wi9ine/toss-invest-mcp"]
+args = ["-y", "@nukeguys/toss-invest-mcp"]
 env = { TOSS_CLIENT_ID = "...", TOSS_CLIENT_SECRET = "..." }
 ```
 
@@ -107,7 +107,7 @@ Open **Settings → Developer → Edit Config**, or edit the platform configurat
   "mcpServers": {
     "toss-invest": {
       "command": "npx",
-      "args": ["-y", "@wi9ine/toss-invest-mcp"],
+      "args": ["-y", "@nukeguys/toss-invest-mcp"],
       "env": {
         "TOSS_CLIENT_ID": "...",
         "TOSS_CLIENT_SECRET": "..."
@@ -128,7 +128,7 @@ Add the same server to the user scope:
 claude mcp add-json --scope user toss-invest '{
   "type": "stdio",
   "command": "npx",
-  "args": ["-y", "@wi9ine/toss-invest-mcp"],
+  "args": ["-y", "@nukeguys/toss-invest-mcp"],
   "env": {
     "TOSS_CLIENT_ID": "...",
     "TOSS_CLIENT_SECRET": "..."
@@ -148,7 +148,7 @@ Create `~/.cursor/mcp.json` for global use, or `.cursor/mcp.json` in a project:
   "mcpServers": {
     "toss-invest": {
       "command": "npx",
-      "args": ["-y", "@wi9ine/toss-invest-mcp"],
+      "args": ["-y", "@nukeguys/toss-invest-mcp"],
       "env": {
         "TOSS_CLIENT_ID": "...",
         "TOSS_CLIENT_SECRET": "..."
@@ -170,7 +170,7 @@ Create `.vscode/mcp.json` in a project, or run **MCP: Open User Configuration** 
     "toss-invest": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@wi9ine/toss-invest-mcp"],
+      "args": ["-y", "@nukeguys/toss-invest-mcp"],
       "env": {
         "TOSS_CLIENT_ID": "...",
         "TOSS_CLIENT_SECRET": "..."
@@ -192,7 +192,7 @@ Open the MCP settings and select **View Raw Config**, or edit
   "mcpServers": {
     "toss-invest": {
       "command": "npx",
-      "args": ["-y", "@wi9ine/toss-invest-mcp"],
+      "args": ["-y", "@nukeguys/toss-invest-mcp"],
       "env": {
         "TOSS_CLIENT_ID": "...",
         "TOSS_CLIENT_SECRET": "..."
@@ -215,7 +215,7 @@ project:
   "mcpServers": {
     "toss-invest": {
       "command": "npx",
-      "args": ["-y", "@wi9ine/toss-invest-mcp"],
+      "args": ["-y", "@nukeguys/toss-invest-mcp"],
       "env": {
         "TOSS_CLIENT_ID": "...",
         "TOSS_CLIENT_SECRET": "..."
@@ -250,7 +250,7 @@ match the tag. It can also be run manually from GitHub Actions with an existing 
 which is useful after a partial failure or for a tag pushed before the workflow existed.
 
 Before running it, configure a GitHub Actions trusted publisher for **each** npm package under
-its npm package settings: owner `wi9ine`, repository `toss-invest-sdk`, workflow filename
+its npm package settings: owner `nukeguys`, repository `toss-invest-sdk`, workflow filename
 `publish.yml`, and allow `npm publish`. Complete the first publish within two days of creating
 the trusted publisher. No npm token or MCP Registry secret is needed. The workflow checks each
 published version before continuing. It submits both packages before waiting for npm validation;
@@ -265,8 +265,8 @@ For a manual release, publish the SDK first, then the MCP package and Registry e
 command requires a prior `mcp-publisher login github`:
 
 ```sh
-pnpm --filter @wi9ine/toss-invest-sdk publish
-pnpm --filter @wi9ine/toss-invest-mcp publish
+pnpm --filter @nukeguys/toss-invest-sdk publish
+pnpm --filter @nukeguys/toss-invest-mcp publish
 pnpm mcp:publish
 ```
 

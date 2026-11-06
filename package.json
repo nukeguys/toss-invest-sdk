@@ -2,7 +2,7 @@
   "name": "toss-invest-sdk",
   "private": true,
   "scripts": {
-    "generate": "pnpm --filter @wi9ine/toss-invest-sdk generate",
+    "generate": "pnpm --filter @nukeguys/toss-invest-sdk generate",
     "build": "pnpm -r build",
     "typecheck": "pnpm build && pnpm -r typecheck",
     "format": "biome format --write .",
@@ -10,11 +10,11 @@
     "lint": "biome lint .",
     "check": "biome check . && pnpm typecheck",
     "test": "pnpm build && pnpm -r test",
-    "test:live": "pnpm --filter @wi9ine/toss-invest-sdk test:live",
+    "test:live": "pnpm --filter @nukeguys/toss-invest-sdk test:live",
     "mcp:build": "pnpm build",
-    "mcp:test": "pnpm build && pnpm --filter @wi9ine/toss-invest-mcp test",
+    "mcp:test": "pnpm build && pnpm --filter @nukeguys/toss-invest-mcp test",
     "mcp:inspect": "pnpm build && pnpm dlx @modelcontextprotocol/inspector node --env-file=.env apps/mcp/dist/stdio.js",
-    "mcp:publish": "pnpm --filter @wi9ine/toss-invest-mcp publish:registry"
+    "mcp:publish": "pnpm --filter @nukeguys/toss-invest-mcp publish:registry"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.6"

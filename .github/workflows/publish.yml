@@ -54,15 +54,15 @@ jobs:
       - name: Pack packages
         run: |
           mkdir -p "$RUNNER_TEMP/packages"
-          pnpm --filter @wi9ine/toss-invest-sdk pack --pack-destination "$RUNNER_TEMP/packages"
-          pnpm --filter @wi9ine/toss-invest-mcp pack --pack-destination "$RUNNER_TEMP/packages"
+          pnpm --filter @nukeguys/toss-invest-sdk pack --pack-destination "$RUNNER_TEMP/packages"
+          pnpm --filter @nukeguys/toss-invest-mcp pack --pack-destination "$RUNNER_TEMP/packages"
       - name: Publish npm packages
         run: |
           set -euo pipefail
           version="${RELEASE_TAG#v}"
           for package in sdk mcp; do
-            name="@wi9ine/toss-invest-${package}"
-            url="https://registry.npmjs.org/@wi9ine%2ftoss-invest-${package}/${version}"
+            name="@nukeguys/toss-invest-${package}"
+            url="https://registry.npmjs.org/@nukeguys%2ftoss-invest-${package}/${version}"
             status=$(curl -sS -o /dev/null -w '%{http_code}' "$url")
             if [ "$status" = 200 ]; then
               echo "$name@$version is already public"
@@ -70,7 +70,7 @@ jobs:
               if npm view "$name" dist-tags --json --prefer-online | jq -e --arg version "$version" 'any(.[]; . == $version)' > /dev/null; then
                 echo "$name@$version was submitted and is not public yet"
               else
-                npm publish "$RUNNER_TEMP/packages/wi9ine-toss-invest-${package}-${version}.tgz" --access public
+                npm publish "$RUNNER_TEMP/packages/nukeguys-toss-invest-${package}-${version}.tgz" --access public
               fi
             else
               echo "npm registry returned HTTP $status for $name@$version" >&2
@@ -84,7 +84,7 @@ jobs:
           for attempt in {1..90}; do
             ready=true
             for package in sdk mcp; do
-              url="https://registry.npmjs.org/@wi9ine%2ftoss-invest-${package}/${version}"
+              url="https://registry.npmjs.org/@nukeguys%2ftoss-invest-${package}/${version}"
               status=$(curl -sS -o /dev/null -w '%{http_code}' "$url")
               if [ "$status" = 404 ]; then
                 ready=false
@@ -114,7 +114,7 @@ jobs:
         run: |
           set -euo pipefail
           version="${RELEASE_TAG#v}"
-          url="https://registry.modelcontextprotocol.io/v0.1/servers/io.github.wi9ine%2Ftoss-invest/versions/$version"
+          url="https://registry.modelcontextprotocol.io/v0.1/servers/io.github.nukeguys%2Ftoss-invest/versions/$version"
           status=$(curl -sS -o /dev/null -w '%{http_code}' "$url")
           if [ "$status" = 200 ]; then
             echo "MCP Registry version $version already published"

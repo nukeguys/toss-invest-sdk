@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.wi9ine/toss-invest",
+  "name": "io.github.nukeguys/toss-invest",
   "title": "Toss Invest",
   "description": "Access Toss Securities market, account, and opt-in trading APIs through MCP.",
   "repository": {
-    "url": "https://github.com/wi9ine/toss-invest-sdk",
+    "url": "https://github.com/nukeguys/toss-invest-sdk",
     "source": "github"
   },
   "version": "0.4.1",
   "packages": [
     {
       "registryType": "npm",
-      "identifier": "@wi9ine/toss-invest-mcp",
+      "identifier": "@nukeguys/toss-invest-mcp",
       "version": "0.4.1",
       "transport": {
         "type": "stdio"

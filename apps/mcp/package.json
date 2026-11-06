@@ -1,16 +1,16 @@
 {
-  "name": "@wi9ine/toss-invest-mcp",
+  "name": "@nukeguys/toss-invest-mcp",
   "version": "0.4.1",
-  "mcpName": "io.github.wi9ine/toss-invest",
+  "mcpName": "io.github.nukeguys/toss-invest",
   "description": "Local MCP server for the Toss Securities Open API",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wi9ine/toss-invest-sdk.git",
+    "url": "git+https://github.com/nukeguys/toss-invest-sdk.git",
     "directory": "apps/mcp"
   },
-  "homepage": "https://github.com/wi9ine/toss-invest-sdk#readme",
-  "bugs": "https://github.com/wi9ine/toss-invest-sdk/issues",
+  "homepage": "https://github.com/nukeguys/toss-invest-sdk#readme",
+  "bugs": "https://github.com/nukeguys/toss-invest-sdk/issues",
   "keywords": [
     "toss",
     "securities",
@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.0.0",
-    "@wi9ine/toss-invest-sdk": "workspace:*",
+    "@nukeguys/toss-invest-sdk": "workspace:*",
     "zod": "4.4.3"
   },
   "devDependencies": {
