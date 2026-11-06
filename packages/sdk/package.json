@@ -1,6 +1,6 @@
 {
   "name": "@nukeguys/toss-invest-sdk",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "TypeScript SDK for the Toss Securities Open API",
   "license": "MIT",
   "repository": {

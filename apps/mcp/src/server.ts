@@ -276,7 +276,7 @@ export function createTossInvestMcpServer(
   }
 
   const server = new McpServer(
-    { name: 'toss-invest', version: '0.4.1' },
+    { name: 'toss-invest', version: '0.4.2' },
     {
       instructions: allowTrading
         ? '토스증권 조회 및 주문 서버입니다. 계좌 API를 호출하기 전에 toss_list_accounts로 accountSeq를 확인하고, 주문 도구는 사용자의 승인을 받은 경우에만 호출하세요.'
